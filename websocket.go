@@ -10,7 +10,38 @@ import (
 	//"time"
 	"log"
 	"json"
+	"strings"
+	//"reflect"
 )
+
+type JSONData interface{}
+
+func GetDeep(key string, data JSONData) (interface{}, bool) {
+	allKeys := strings.Split(key, ".", -1)
+	
+	dataStep := data
+	for _, subKey := range(allKeys) {
+		// Check we have something sane we can use
+		switch dataType := dataStep.(type) {
+			case map[string]interface{}:
+				value, ok := dataStep.(map[string]interface{})[subKey]
+				if !ok {
+					return nil, false
+				}
+				dataStep = value
+				continue
+			
+			case []interface{}:
+				log.Fatal("don't know how to handle this one yet")
+				return nil, false
+			default:
+				log.Fatal("don't konw how to handle this type: %s", dataType)
+				return nil, false
+		}
+	}
+	
+	return dataStep, true
+}
 
 func ServeWS(socket *websocket.Conn) {
 	file, err := os.Open("ranger_sample.json")
@@ -33,23 +64,28 @@ func ServeWS(socket *websocket.Conn) {
 			break
 		}
 
-		var genericData interface{}
+		var data JSONData
 		
-		
-		err = json.Unmarshal(line, &genericData)
+		err = json.Unmarshal(line, &data)
 		if err != nil {
 			log.Fatal("Failure to decode: %s", err)
 		}
 		
-		data := genericData.(map[string]interface{})
-		uniqueRequestID, ok := data["unique_request_id"].(string)
-		if ok {
-			socket.Write([]byte(uniqueRequestID))
-		} else {
+		uniqueRequestID, ok := GetDeep("unique_request_id", data)
+
+		if !ok {
 			log.Print("Missing unique request id")
 		}
 
-		
+		dirtySession := "NA"
+		dirtySessionBool, ok := GetDeep("extra.dirty_session", data)
+		if !ok {
+			log.Print("Missing dirty session")	
+		} else {
+			dirtySession = fmt.Sprintf("%t", dirtySessionBool)
+		}
+
+		socket.Write([]byte(fmt.Sprintf("%s: %s", uniqueRequestID, dirtySession)))
 	}
 	
 	/*
