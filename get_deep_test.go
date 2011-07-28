@@ -9,20 +9,20 @@ import (
 )
 
 type getDeepTest struct {
-	key string
+	key   string
 	value interface{}
-	ok bool
+	ok    bool
 }
 
 var getDeepTests = []getDeepTest{
 	getDeepTest{"a", 1, true},
 	getDeepTest{"b", "foo", true},
 	getDeepTest{"not_there", nil, false},
-	getDeepTest{"c", map[string]int {"d": 2}, true},
-	getDeepTest{"c.d", 2 , true},
+	getDeepTest{"c", map[string]int{"d": 2}, true},
+	getDeepTest{"c.d", 2, true},
 	getDeepTest{"array.2", nil, false},
 	getDeepTest{"c.d.not_there", nil, false},
-	getDeepTest{"array", [2]int{2,3}, true},
+	getDeepTest{"array", [2]int{2, 3}, true},
 	getDeepTest{"array.1", 3, true},
 	getDeepTest{"array.foo", nil, false},
 }
@@ -40,7 +40,7 @@ func TestGetDeep(t *testing.T) {
 	var fixture JSONData
 
 	reader := strings.NewReader(jsonString)
-	jsonBytes, _ := ioutil.ReadAll(reader)	
+	jsonBytes, _ := ioutil.ReadAll(reader)
 	err := json.Unmarshal(jsonBytes, &fixture)
 
 	if err != nil {
