@@ -10,7 +10,6 @@ import (
 	"websocket"
 	"log"
 	"json"
-
 )
 
 type LineReader interface {
@@ -19,7 +18,7 @@ type LineReader interface {
 
 var (
 	rangerDataChan chan (chan JSONData)
-	allChannels [](chan JSONData)
+	allChannels    [](chan JSONData)
 )
 
 func init() {
@@ -28,7 +27,7 @@ func init() {
 
 func acceptChannels() {
 	for {
-		newChannel := <- rangerDataChan
+		newChannel := <-rangerDataChan
 		log.Printf("Adding new channel to data stream")
 		allChannels = append(allChannels, newChannel)
 	}
@@ -80,10 +79,10 @@ func ServeWS(socket *websocket.Conn) {
 	// Create a new channel to receive data on
 	dataChan := make(chan JSONData)
 	rangerDataChan <- dataChan
-	
+
 	for {
 		data := <-dataChan
-		
+
 		uniqueRequestID, ok := GetDeep("unique_request_id", data)
 
 		if !ok {
@@ -93,7 +92,7 @@ func ServeWS(socket *websocket.Conn) {
 		dirtySession := "NA"
 		dirtySessionBool, ok := GetDeep("extra.dirty_session", data)
 		if !ok {
-			log.Print("Missing dirty session")	
+			log.Print("Missing dirty session")
 		} else {
 			dirtySession = fmt.Sprintf("%t", dirtySessionBool)
 		}
@@ -105,22 +104,22 @@ func ServeWS(socket *websocket.Conn) {
 func ServePage(writer http.ResponseWriter, request *http.Request) {
 	//file, err := os.Open("default.do");
 	log.Println("Starting /")
-	
+
 	//defer file.Close();
 	contents, err := ioutil.ReadFile("index.html")
 	if err != nil {
-		fmt.Printf("Error opening file");
+		fmt.Printf("Error opening file")
 		return
 	}
 
-	writer.Write(contents);
+	writer.Write(contents)
 
 }
 
 
 func main() {
 	log.Println("Starting up")
-	
+
 	go acceptChannels()
 
 	stream := CreateStream("scribe-stagea.local.yelpcorp.com:3535")
@@ -131,11 +130,11 @@ func main() {
 	}
 
 	go streamData(lineStream)
-	
-	http.Handle("/", http.HandlerFunc(ServePage));
-	http.Handle("/ws", websocket.Handler(ServeWS));
 
-	err = http.ListenAndServe(":8080", nil);
+	http.Handle("/", http.HandlerFunc(ServePage))
+	http.Handle("/ws", websocket.Handler(ServeWS))
+
+	err = http.ListenAndServe(":8080", nil)
 	if err != nil {
 		panic("ListenAndServe: " + err.String())
 	}
