@@ -105,7 +105,7 @@ func ServePage(writer http.ResponseWriter, request *http.Request) {
 	log.Println("Starting /")
 	
 	//defer file.Close();
-	contents, err := ioutil.ReadFile("websocket.html")
+	contents, err := ioutil.ReadFile("index.html")
 	if err != nil {
 		fmt.Printf("Error opening file");
 		return

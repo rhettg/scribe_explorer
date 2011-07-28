@@ -1,7 +1,7 @@
 include $(GOROOT)/src/Make.inc
 
-TARG=hello
+TARG=rangerweb
 GOFILES=\
-	hello.go\
+	rangerweb.go\
 
 include $(GOROOT)/src/Make.cmd
