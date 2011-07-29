@@ -6,8 +6,8 @@ import (
 
 type samplingFilterTest struct {
 	statement string
-	rate float64
-	ok bool 
+	rate      float64
+	ok        bool
 }
 
 var samplingFilterTests = []samplingFilterTest{
@@ -18,7 +18,7 @@ var samplingFilterTests = []samplingFilterTest{
 
 func TestParsingSamplingFilter(t *testing.T) {
 	for _, test := range samplingFilterTests {
-		f, ok := NewSamplingFilter(test.statement)		
+		f, ok := NewSamplingFilter(test.statement)
 		if ok != test.ok {
 			t.Errorf("For statement '%s', expected ok = %t, but was %t", test.statement, test.ok, ok)
 		}

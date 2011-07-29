@@ -23,7 +23,7 @@ func PassesAllFilters(line JSONData, filters []Filter) bool {
 }
 
 func ParseFilters(statements []string) (filters []Filter, ok bool) {
-	for	i, statement := range statements {
+	for i, statement := range statements {
 		filter, ok := ParseStatement(statement)
 		if ok {
 			filters[i] = filter
@@ -82,5 +82,5 @@ func (f *SamplingFilter) Parse(query string) (ok bool, applicable bool, msg stri
 }
 
 func (f SamplingFilter) Predicate(line JSONData) bool {
-	return rand.Float64() < f.rate	
+	return rand.Float64() < f.rate
 }
