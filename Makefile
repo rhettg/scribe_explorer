@@ -5,6 +5,7 @@ GOFILES=\
 	tail.go\
 	get_deep.go\
 	rangerweb.go\
-	filter.go
+	filter.go\
+	json_io.go
 
 include $(GOROOT)/src/Make.cmd

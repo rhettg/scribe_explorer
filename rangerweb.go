@@ -133,25 +133,6 @@ func ServeWS(socket *websocket.Conn) {
 			outputMap[fieldValue], _ = GetDeep(fieldValue, data)
 		}
 
-		/*
-		uniqueRequestID, ok := GetDeep("unique_request_id", data)
-
-		if !ok {
-			log.Print("Missing unique request id")
-		}
-
-		dirtySession := "NA"
-		dirtySessionBool, ok := GetDeep("extra.dirty_session", data)
-		if ok {
-			dirtySession = fmt.Sprintf("%t", dirtySessionBool)
-		}
-
-		outputMap := map[string] interface{} {
-			"unique_request_id": uniqueRequestID,
-			"extra.dirty_session": dirtySession,
-		}
-		*/
-
 		outputBytes, err := json.Marshal(outputMap)
 		if err != nil {
 			log.Fatal("Failed to marshall", err)
