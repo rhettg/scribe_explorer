@@ -11,7 +11,6 @@ import (
 	"log"
 	"json"
 	"net"
-	"net/textproto"
 )
 
 type LineReader interface {
@@ -80,6 +79,26 @@ func CreateTestDataStream(fileName string) io.Reader {
 func ServeWS(socket *websocket.Conn) {
 	jsonStream := NewJSONConn(socket)
 
+	defer func() {
+        if err := recover(); err != nil {
+            log.Println("ServeWS failed:", err)
+        }
+    }()
+
+	ServeStream(jsonStream)
+}
+
+func serveTCP(conn net.Conn) {
+	defer conn.Close()
+	
+	defer func() {
+        if err := recover(); err != nil {
+            log.Println("serveTCP failed:", err)
+        }
+    }()
+
+	jsonStream := NewJSONConn(conn)
+
 	ServeStream(jsonStream)
 }
 
@@ -91,7 +110,8 @@ func ServeStream(stream *JSONConn) {
 	// Get our query from the client
 	query, err := stream.ReadJSON()
 	if err != nil {
-		log.Fatal("Failed to read from client", err)
+		log.Printf("Failed to read from client", err)
+		return
 	}
 
 	displayFields := []string{}
@@ -125,7 +145,8 @@ func ServeStream(stream *JSONConn) {
 
 		err := stream.WriteJSON(outputMap)
 		if err != nil {
-			log.Fatal("Failed to write", err)
+			log.Printf("Failed to write", err)
+			return
 		}
 	}
 }
@@ -143,24 +164,6 @@ func ServePage(writer http.ResponseWriter, request *http.Request) {
 
 	writer.Write(contents)
 
-}
-
-func serveTCP(conn *textproto.Conn) {
-	defer conn.Close()
-	
-	for {
-		cmd, err := conn.ReadLine()
-		if err != nil {
-			log.Println("Failed reading line", err)
-			break
-		}
-		
-		err = conn.PrintfLine(cmd)
-		if err != nil {
-			log.Println("Failed writing line", err)
-			break
-		}
-	}
 }
 
 func listenTCPClients() {
@@ -183,8 +186,8 @@ func listenTCPClients() {
 			log.Fatal("Failed to accept", err)
 		}
 
-		protoConn := textproto.NewConn(conn)
-		go serveTCP(protoConn)
+		//protoConn := textproto.NewConn(conn)
+		go serveTCP(conn)
 	}
 }
 
