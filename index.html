@@ -2,7 +2,132 @@
 <meta charset="utf-8" />
 <head>
 <title>WebSocket Test</title>
+
 <style type="text/css">
+html, body, div, span, applet, object, iframe,
+h1, h2, h3, h4, h5, h6, p, blockquote, pre,
+a, abbr, acronym, address, big, cite, code,
+del, dfn, em, img, ins, kbd, q, s, samp,
+small, strike, strong, sub, sup, tt, var,
+b, u, i, center,
+dl, dt, dd, ol, ul, li,
+fieldset, form, label, legend,
+table, caption, tbody, tfoot, thead, tr, th, td,
+article, aside, canvas, details, embed, 
+figure, figcaption, footer, header, hgroup, 
+menu, nav, output, ruby, section, summary,
+time, mark, audio, video {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font-size: 100%;
+  font: inherit;
+  vertical-align: baseline;
+}
+/* HTML5 display-role reset for older browsers */
+article, aside, details, figcaption, figure, 
+footer, header, hgroup, menu, nav, section {
+  display: block;
+}
+body {
+  line-height: 1;
+  font: 14px helvetica;
+  background-color: #fdf6e3
+}
+ol, ul {
+  list-style: none;
+}
+blockquote, q {
+  quotes: none;
+}
+blockquote:before, blockquote:after,
+q:before, q:after {
+  content: '';
+  content: none;
+}
+
+
+h1 {
+  color: #fdf6e3;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  font-size: 30px;
+  font-weight: bold;
+  margin: 15px 0px 10px 5px;
+}
+
+#header {
+  margin: 0px 0px 0px 0px;
+  padding: 1px 0 10px 10px;
+  background-color: #586e75;
+}
+
+#queryForm {
+  margin-left: 45px;
+  clear: both;
+}
+
+label {
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #fdf6e3;
+}
+
+textarea { 
+  width: 150px;
+  height: 80px;
+}
+
+#output {
+  
+}
+
+table {
+  border-collapse: collapse;
+  border-spacing: 0;
+  width: 100%;
+}
+
+
+table thead {
+  font-weight: bold;
+  font-size: 16px;
+  text-align: left;
+}
+
+table-header-group {
+  font: 15px fixed;
+  white-space: pre;
+  
+}
+
+table tr {
+  margin: 5px 5px 5px 5px;
+}
+
+th {
+  font: bold 11px "Trebuchet MS", Verdana, Arial, Helvetica,
+  sans-serif;
+  color: #073642;
+  border-right: 1px solid #C1DAD7;
+  border-bottom: 1px solid #C1DAD7;
+  border-top: 1px solid #C1DAD7;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  text-align: left;
+  padding: 6px 6px 6px 12px;
+  background: #839496; ;
+}
+
+td {
+  border-right: 1px solid #C1DAD7;
+  border-bottom: 1px solid #C1DAD7;
+  background: #fff;
+  padding: 6px 6px 6px 12px;
+  color: #111111;
+}
+
+
 .info {
  color: #01529B;
  background-color: #BDE5F8;
@@ -16,7 +141,7 @@
  background-color: #FEEFB3;
 }
 .button{
-    font: 11px verdana, arial, helvetica, sans-serif;
+    font: 12px helvetica, sans-serif;
     border: 1px solid #ccc;
     color: #666;
     font-weight: bold;
@@ -29,22 +154,34 @@
 </style>
 </head>
 <body>
-<h3>Ranger Web</h3>
 
-<form id="query" name="query">
-  <textarea id="displayFields">
+<div id="content">
+  <div id="header">
+    <h1>Scribe Explorer</h1>
+
+    <div id="queryForm">
+      <form id="query" name="query">
+        <label>Log Name</label>
+        <input type="text" value="ranger" name="logName" id="logName" />
+
+        <label for="displayFields">Display</label>
+        <textarea id="displayFields">
 unique_request_id
 uri
-  </textarea>
-  <textarea id="queryFilters">
-  </textarea>
+</textarea>
 
-  <input type="button" value="Update Query" id="queryButton" name="queryButton" />
-</form>
+        <label for="queryFilters">Filters</label>
 
-<input type="button" value="stop" id="stopButton" class="button" />
+        <textarea id="queryFilters"></textarea>
 
-<div id="output">
+        <input type="button" value="Update Query" id="queryButton" name="queryButton" class="button" />
+        <input type="button" value="Stop" id="stopButton" class="button" />
+      </form>
+    </div>
+  </div>
+
+  <div id="output"></div>
+
 </div>
 
 </body>
@@ -84,8 +221,11 @@ uri
   };
 
   RW.createQuery = function() {
-    var fieldSplit = $('#displayFields').val().split(/\n/);
     var query = {fields: [], filters: []}
+    query.logName = $('#logName').val();
+
+    var fieldSplit = $('#displayFields').val().split(/\n/);
+    
     for (var i in fieldSplit) {
       var field = fieldSplit[i].replace(/\s+/, "");
       if (field) {
@@ -126,7 +266,7 @@ uri
       this.websocket.onmessage = function(evt) { rangerStream.onMessage(evt) };
       this.websocket.onerror = function(evt) { rangerStream.onError(evt) };
       
-      this.rowLimit = 20;
+      this.rowLimit = 30;
 
   };
 
