@@ -17,8 +17,14 @@ type LineReader interface {
 }
 
 var (
-	rangerStream *DataStream
+	streamHost string
+	scribeStreams map[string] *DataStream
+
 )
+
+func init() {
+	scribeStreams = make(map[string] *DataStream)
+}
 
 func CreateTestDataStream(fileName string) io.Reader {
 	file, err := os.Open(fileName)
@@ -56,21 +62,34 @@ func serveTCP(conn net.Conn) {
 	ServeStream(jsonStream)
 }
 
-func ServeStream(stream *JSONConn) {
-	// Create a new channel to receive data on
-	dataChan := make(chan JSONData, 16)
-	request := new(SubscribeRequest)
-	request.dataChan = dataChan
-	rangerStream.subscribeChan <- request
-	
-	defer func() {rangerStream.unsubscribeChan <- request}()
+// type ScribeQuery struct {
+// 	fields []string
+// 	filters []string
+//  logName string
+// }
 
+func ServeStream(stream *JSONConn) {
 	// Get our query from the client
 	query, err := stream.ReadJSON()
 	if err != nil {
 		log.Printf("Failed to read from client", err)
 		return
 	}
+
+	// Find the stream
+	logName := query.(map[string] interface{})["logName"].(string)
+	log.Printf("Subscribing to log", logName)
+	
+	scribeStream := StreamByName(logName)
+	
+	// Create a new channel to receive data on
+	dataChan := make(chan JSONData, 16)
+	request := new(SubscribeRequest)
+	request.dataChan = dataChan
+	scribeStream.subscribeChan <- request
+	
+	defer func() {scribeStream.unsubscribeChan <- request}()
+
 
 	displayFields := []string{}
 	aggregators := []Aggregator{}
@@ -161,16 +180,23 @@ func listenTCPClients() {
 	}
 }
 
+func StreamByName(name string) (stream *DataStream) {
+	if stream, ok := scribeStreams[name]; ok {
+		return stream
+	}
+	
+	scribeStreams[name] = NewDataStream(name, streamHost)
+	return scribeStreams[name]
+}
+
 var aggregator = flag.String("e", "dev", "One of {dev, stagea, stagex, prod}")
 
 func main() {
 	log.Println("Starting up")
 
 	flag.Parse()
-	streamHost := fmt.Sprintf("scribe-%s.local.yelpcorp.com:3535", *aggregator)
+	streamHost = fmt.Sprintf("scribe-%s.local.yelpcorp.com:3535", *aggregator)
 	log.Println("Connecting to ", streamHost)
-
-	rangerStream = NewDataStream("ranger", streamHost)
 
 	go listenTCPClients()
 

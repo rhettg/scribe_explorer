@@ -7,7 +7,7 @@ if __name__ == "__main__":
 	fd.connect(sockaddr)
 
 
-	fd.send(json.dumps({"filters": [], "fields": ["unique_request_id", "uri"]}))
+	fd.send(json.dumps({"logName": "ranger", "filters": [], "fields": ["unique_request_id", "yuv", "uri"]}))
 	fd.send("\n")
 
 	while True:
