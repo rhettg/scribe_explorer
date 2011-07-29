@@ -32,7 +32,7 @@
 <h3>Ranger Web</h3>
 
 <form id="query" name="query">
-  <textarea name="display">
+  <textarea id="displayFields">
 unique_request_id
 uri
   </textarea>
@@ -41,25 +41,11 @@ uri
 
 <input type="button" value="stop" id="stopButton" class="button" />
 
-
 <div id="output">
-<table cellpadding="0" cellspacing="0" border="0" class="display" id="outputTable"> 
-  <thead> 
-    <tr> 
-      <th>Column 1</th> 
-      <th>Column 2</th> 
-    </tr> 
-  </thead> 
-  <tbody> 
-  </tbody> 
-</table>
 </div>
 
-
-<span class="warning">Behold websockets</span>
-
-
 </body>
+
 <script type="text/javascript" src="https://www.google.com/jsapi?key=ABQIAAAALkkVYi-_IoTqjN6A5Vej_RSP7reJNzDv1559unVybm5vtiJlwRR-YypmmY-UrlkmztE53h7rMSoPwg"></script>
 <script type="text/javascript" language="javascript">
   google.load("jquery", "1.6.2");
@@ -95,15 +81,24 @@ uri
   };
 
   RW.createQuery = function() {
-    return null;
+    var fieldSplit = $('#displayFields').val().split(/\s+/);
+    var query = {fields: [], filter: []}
+    for (var i in fieldSplit) {
+      if (fieldSplit[i]) {
+        query.fields.push(fieldSplit[i])
+      }
+    }
+
+    return query;
   }
 
   RW.RangerStream = function(query) {
+      console.log(query);
       var rangerStream = this;
       this.output = document.getElementById("output");
       this.output.innerHTML = "<table id=\'outputTable'\></table>";
 
-      this.keys = ['unique_request_id', 'extra.dirty_session'];
+      this.keys = query.fields;
 
       $('#outputTable').append("<thead><tr id='outputTableHeader'></th></tr></thead>");
       for (var ndx in this.keys) {
@@ -132,7 +127,6 @@ uri
 
   RW.RangerStream.prototype.onClose = function(evt) {
       console.log('now closed');
-      this.writeToScreen("...Kaboom...Im gone",'warning');
   };
 
 
@@ -159,21 +153,11 @@ uri
 
   RW.RangerStream.prototype.onError = function(evt) {
       console.log("error: " + evt);
-      this.writeToScreen(evt.data,'error');
   }
 
   RW.RangerStream.prototype.doSend = function(message) {
-      this.writeToScreen("SENT: " + message); 
       this.websocket.send(message);
   }
-
-  RW.RangerStream.prototype.writeToScreen = function(message, rule) {
-      if (this.output) {
-        this.output.innerHTML = message + "<br />" + output.innerHTML;
-        this.output.className=rule;        
-      }
-  }
-  
   
   $(document).ready(RW.init);
 </script>
