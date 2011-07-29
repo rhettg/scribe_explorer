@@ -11,6 +11,7 @@ import (
 	"log"
 	"json"
 	"net"
+	"flag"
 )
 
 type LineReader interface {
@@ -69,7 +70,8 @@ func streamData(lineStream LineReader) {
 			break
 		}
 		if isPrefix {
-			log.Fatal("PREFIX!!")
+			log.Printf("PREFIX!! Skipping line.")
+			continue
 		}
 
 		// We have fairly reliable looking chunk of data, try to decode it
@@ -228,13 +230,18 @@ func listenTCPClients() {
 	}
 }
 
+var aggregator = flag.String("e", "dev", "One of {dev, stagea, stagex, prod}")
 
 func main() {
 	log.Println("Starting up")
 
 	go acceptChannels()
 
-	stream := CreateStream("scribe-stagea.local.yelpcorp.com:3535")
+	flag.Parse()
+	streamHost := fmt.Sprintf("scribe-%s.local.yelpcorp.com:3535", *aggregator)
+	log.Println("Connecting to ", streamHost)
+	stream := CreateStream(streamHost)
+
 	//stream := CreateTestDataStream("test_data/ranger_sample.json")
 	lineStream, err := bufio.NewReaderSize(stream, 1024*32)
 	if err != nil {
