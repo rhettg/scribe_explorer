@@ -5,11 +5,9 @@ import (
 	"os"
 	"io"
 	"io/ioutil"
-	"bufio"
 	"http"
 	"websocket"
 	"log"
-	"json"
 	"net"
 	"flag"
 )
@@ -19,86 +17,8 @@ type LineReader interface {
 }
 
 var (
-	rangerDataChan chan DataChannelRequest
-	allChannels    [](chan JSONData)
+	rangerStream *DataStream
 )
-
-func init() {
-	rangerDataChan = make(chan DataChannelRequest)
-	allChannels = make([](chan JSONData), 0, 64)
-}
-
-type DataChannelRequest struct {
-	data chan JSONData
-	response chan int
-}
-
-func acceptChannels() {
-	for {
-		channelNdx := -1
-		
-		channelRequest := <-rangerDataChan
-		
-		for ndx, value := range(allChannels) {
-			if value == nil {
-				allChannels[ndx] = channelRequest.data
-				channelNdx = ndx
-			}
-		}
-		if channelNdx < 0 {
-			allChannels = append(allChannels, channelRequest.data)
-			channelNdx = (len(allChannels) - 1)
-		}
-		log.Printf("Adding new channel %d to data stream", channelNdx)
-		channelRequest.response <- channelNdx
-	}
-}
-
-func dropChannel(channelIndex int) {
-	log.Println("Dropping channel", channelIndex)
-	allChannels[channelIndex] = nil
-}
-
-func streamData(lineStream LineReader) {
-	for {
-		line, isPrefix, err := lineStream.ReadLine()
-		if err != nil {
-			if err == os.EOF {
-				break
-			}
-			log.Printf("Failed on line stream", err)
-			break
-		}
-		if isPrefix {
-			log.Printf("PREFIX!! Skipping line.")
-			continue
-		}
-
-		// We have fairly reliable looking chunk of data, try to decode it
-		var data JSONData
-		err = json.Unmarshal(line, &data)
-		if err != nil {
-			log.Printf("Failure to decode: %s", err)
-			log.Println(string(line))
-			log.Println()
-			continue
-		}
-
-		// Now deliver this fine chunk of ranger data to each of our listeners
-
-		for ndx, webChannel := range allChannels {
-			if webChannel != nil {
-				// We don't want to be blocking waiting on the channel, if it can't keep up we'll drop the data.
-				select {
-					case webChannel <- data:
-					default:
-						log.Println("Dropping data to channel", ndx)
-				}
-			}
-		}
-	}
-	log.Printf("All done with data stream")
-}
 
 func CreateTestDataStream(fileName string) io.Reader {
 	file, err := os.Open(fileName)
@@ -136,15 +56,14 @@ func serveTCP(conn net.Conn) {
 	ServeStream(jsonStream)
 }
 
-
 func ServeStream(stream *JSONConn) {
 	// Create a new channel to receive data on
 	dataChan := make(chan JSONData, 16)
-	responseChan := make(chan int)
-	rangerDataChan <- DataChannelRequest{dataChan, responseChan}
-	channelIndex := <-responseChan
-
-	defer dropChannel(channelIndex)
+	request := new(SubscribeRequest)
+	request.dataChan = dataChan
+	rangerStream.subscribeChan <- request
+	
+	defer func() {rangerStream.unsubscribeChan <- request}()
 
 	// Get our query from the client
 	query, err := stream.ReadJSON()
@@ -235,27 +154,18 @@ var aggregator = flag.String("e", "dev", "One of {dev, stagea, stagex, prod}")
 func main() {
 	log.Println("Starting up")
 
-	go acceptChannels()
-
 	flag.Parse()
 	streamHost := fmt.Sprintf("scribe-%s.local.yelpcorp.com:3535", *aggregator)
 	log.Println("Connecting to ", streamHost)
-	stream := CreateStream(streamHost)
 
-	//stream := CreateTestDataStream("test_data/ranger_sample.json")
-	lineStream, err := bufio.NewReaderSize(stream, 1024*32)
-	if err != nil {
-		log.Fatal("Failed to create reader", err)
-	}
-
-	go streamData(lineStream)
+	rangerStream = NewDataStream("ranger", streamHost)
 
 	go listenTCPClients()
 
 	http.Handle("/", http.HandlerFunc(ServePage))
 	http.Handle("/ws", websocket.Handler(ServeWS))
 
-	err = http.ListenAndServe(":8080", nil)
+	err := http.ListenAndServe(":8080", nil)
 	if err != nil {
 		panic("ListenAndServe: " + err.String())
 	}

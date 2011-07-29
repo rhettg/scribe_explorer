@@ -2,7 +2,7 @@ include $(GOROOT)/src/Make.inc
 
 TARG=rangerweb
 GOFILES=\
-	tail.go\
+	data_stream.go\
 	get_deep.go\
 	rangerweb.go\
 	filter.go\
