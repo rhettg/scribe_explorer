@@ -28,9 +28,20 @@
 
 </style>
 </head>
-<body onload="init">
-<h3>Hello HTML5 Web Socket</h3>
-<input type="button" value="stop" name="stopBtn" class="button" onclick="javascript:stop();"/>
+<body>
+<h3>Ranger Web</h3>
+
+<form id="query" name="query">
+  <textarea name="display">
+unique_request_id
+uri
+  </textarea>
+  <input type="button" value="Update Query" id="queryButton" name="queryButton" />
+</form>
+
+<input type="button" value="stop" name="stopBtn" class="button" />
+
+
 <div id="output">
 </div>
 
@@ -38,84 +49,81 @@
 <span class="warning">Behold websockets</span>
 
 
-
-
 </body>
+<script type="text/javascript" src="https://www.google.com/jsapi?key=ABQIAAAALkkVYi-_IoTqjN6A5Vej_RSP7reJNzDv1559unVybm5vtiJlwRR-YypmmY-UrlkmztE53h7rMSoPwg"></script>
+<script type="text/javascript" language="javascript">
+  google.load("jquery", "1.6.2");
+</script>
+
 <script language="javascript" type="text/javascript">
+  var RW = RW || {};
 
+  RW.init = function() {
+      $('#queryButton').click(RW.onQueryClick);
+  };
 
-  var wsUri = "ws://localhost:"+8080+"/ws";
-  var output;
+  RW.currentStream = null;
 
+  RW.onQueryClick = function(evt) {
+      console.log("Query!");
+      
+      if (RW.currentStream) {
+        RW.currentStream.close();
+      }
 
-  function init()
-  {
-    output = document.getElementById("output");
-    writeToScreen(" Not Connected to server",'warning');
-    testWebSocket();
-  }
-  function stop()
-  {
-   websocket.send('disconnect');
-  }
-  function testWebSocket()
-  {
-    websocket = new WebSocket(wsUri);
-    websocket.onopen = function(evt) { onOpen(evt) };
-    websocket.onclose = function(evt) { onClose(evt) };
-    websocket.onmessage = function(evt) { onMessage(evt) };
-    websocket.onerror = function(evt) { onError(evt) };
+      RW.currentStream = new RW.RangerStream(RW.createQuery());
+      
+  };
+
+  RW.createQuery = function() {
+    return null;
   }
 
+  RW.RangerStream = function(query) {
+      var rangerStream = this;
+      this.output = document.getElementById("output");
+      this.websocket = new WebSocket("ws://localhost:"+8080+"/ws");
+      this.websocket.onopen = function(evt) { rangerStream.onOpen(evt) };
+      this.websocket.onclose = function(evt) { rangerStream.onClose(evt) };
+      this.websocket.onmessage = function(evt) { rangerStream.onMessage(evt) };
+      this.websocket.onerror = function(evt) { rangerStream.onError(evt) };        
+  };
 
-  function onOpen(evt)
-  {
+  RW.RangerStream.prototype.stop = function() {
+      this.websocket.close();
+  };
+
+  RW.RangerStream.prototype.onOpen = function(evt) {
     console.log("connected");
-    //writeToScreen("Connected to server");
-    //doSend("Hello are you there WebSocket Server");
+  };
+
+  RW.RangerStream.prototype.onClose = function(evt) {
+      console.log('now closed');
+      this.writeToScreen("...Kaboom...Im gone",'warning');
+  };
+
+
+  RW.RangerStream.prototype.onMessage = function(evt) {
+      console.log("received: " + evt.data);
+      this.writeToScreen(evt.data, 'info');
   }
 
-
-  function onClose(evt)
-  {
-    console.log('now closed');
-    writeToScreen("...Kaboom...Im gone",'warning');
+  RW.RangerStream.prototype.onError = function(evt) {
+      console.log("error: " + evt);
+      this.writeToScreen(evt.data,'error');
   }
 
-
-  function onMessage(evt)
-  {
-    console.log("received: " + evt.data);
-    writeToScreen(evt.data, 'info');
+  RW.RangerStream.prototype.doSend = function(message) {
+      this.writeToScreen("SENT: " + message); 
+      this.websocket.send(message);
   }
 
-
-  function onError(evt)
-  {
-    console.log("error: " + evt);
-    writeToScreen(evt.data,'error');
-  }
-
-
-  function doSend(message)
-  {
-    writeToScreen("SENT: " + message); 
-    websocket.send(message);
-  }
-
-
-  function writeToScreen(message,rule)
-  {
-    output.innerHTML += "<br />" + message;
-    output.className=rule;
-  }
-  if(window.addEventListener){
-   window.addEventListener("load", init, false);
-  }else{
-   window.attachEvent("onload", init);
+  RW.RangerStream.prototype.writeToScreen = function(message, rule) {
+      this.output.innerHTML = message + "<br />" + output.innerHTML;
+      this.output.className=rule;
   }
   
-
-
+  
+  $(document).ready(RW.init);
 </script>
 </html>
