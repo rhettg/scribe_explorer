@@ -225,9 +225,8 @@ uri
     query.logName = $('#logName').val();
 
     var fieldSplit = $('#displayFields').val().split(/\n/);
-    
     for (var i in fieldSplit) {
-      var field = fieldSplit[i].replace(/\s+/, "");
+      var field = jQuery.trim(fieldSplit[i])
       if (field) {
         query.fields.push(field)
       }
@@ -235,7 +234,7 @@ uri
 
     var filterSplit = $('#queryFilters').val().split(/\n/);
     for (var i in filterSplit) {
-      var filter = jQuery.trim(filterSplit[i]) //.replace(/\s+/, "");
+      var filter = jQuery.trim(filterSplit[i])
       if (filter) {
         query.filters.push(filter)
       }

@@ -126,6 +126,11 @@ func (f *ComparisonFilter) Parse(query string) (ok bool, applicable bool, msg st
 		key := fields[0]
 		opStr := fields[1]
 		rhs := fields[2]
+
+		// Strip off quotes if there's a matching pair (e.g. allows checks for == "")
+		if len(rhs) >= 2 && strings.HasPrefix(rhs, "\"") && strings.HasSuffix(rhs, "\"") {
+			rhs = rhs[1:len(rhs) - 1]
+		}
 		
 		operator, operatorPresent := comparisonOperators[opStr]
 		if !operatorPresent {

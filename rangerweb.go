@@ -73,9 +73,17 @@ func ServeStream(stream *JSONConn) {
 	}
 
 	displayFields := []string{}
+	aggregators := []Aggregator{}
+
 	for _, fieldValue := range query.(map[string] interface{})["fields"].([]interface{}) {
-		log.Printf("Field: ", fieldValue)
-		displayFields = append(displayFields, fieldValue.(string))
+		aggregator := ParseAggregatorStatement(fieldValue.(string))
+		if aggregator != nil {
+			aggregators = append(aggregators, aggregator)
+			log.Printf("Parsed to aggregator: ", aggregator.String())
+		}else {
+			displayFields = append(displayFields, fieldValue.(string))
+			log.Printf("Field: ", fieldValue)
+		}
 	}
 
 	filters := []Filter{}
@@ -99,6 +107,10 @@ func ServeStream(stream *JSONConn) {
 		
 		for _, fieldValue := range displayFields {
 			outputMap[fieldValue], _ = GetDeep(fieldValue, data)
+		}
+
+		for _, aggregator := range aggregators {
+			outputMap[aggregator.String()] = aggregator.Push(data)
 		}
 
 		err := stream.WriteJSON(outputMap)
