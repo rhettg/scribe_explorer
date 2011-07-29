@@ -78,30 +78,20 @@ func CreateTestDataStream(fileName string) io.Reader {
 }
 
 func ServeWS(socket *websocket.Conn) {
+	jsonStream := NewJSONConn(socket)
+
+	ServeStream(jsonStream)
+}
+
+func ServeStream(stream *JSONConn) {
 	// Create a new channel to receive data on
 	dataChan := make(chan JSONData)
 	rangerDataChan <- dataChan
 
-	lineStream, err := bufio.NewReaderSize(socket, 1024*32)
-	if err != nil {
-		log.Fatal("Failed to create reader", err)
-	}
-
 	// Get our query from the client
-	cmd, _, err := lineStream.ReadLine()
+	query, err := stream.ReadJSON()
 	if err != nil {
 		log.Fatal("Failed to read from client", err)
-	}
-
-	log.Println("Found: ", string(cmd))
-
-	// Parse the query
-	var query JSONData
-	err = json.Unmarshal(cmd, &query)
-	if err != nil {
-		log.Printf("Failure to decode: %s", cmd, err)
-		log.Println(string(cmd))
-		return
 	}
 
 	displayFields := []string{}
@@ -133,12 +123,10 @@ func ServeWS(socket *websocket.Conn) {
 			outputMap[fieldValue], _ = GetDeep(fieldValue, data)
 		}
 
-		outputBytes, err := json.Marshal(outputMap)
+		err := stream.WriteJSON(outputMap)
 		if err != nil {
-			log.Fatal("Failed to marshall", err)
+			log.Fatal("Failed to write", err)
 		}
-		
-		socket.Write(outputBytes);
 	}
 }
 

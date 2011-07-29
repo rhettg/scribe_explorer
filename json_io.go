@@ -12,19 +12,19 @@ type JSONConn struct {
 	bufConn *bufio.ReadWriter
 }
 
-func NewJSONConn(conn *io.ReadWriter) *JSONConn {
-	reader, err := bufio.NewReaderSize(*conn, 1024 * 8)
+func NewJSONConn(conn io.ReadWriter) *JSONConn {
+	reader, err := bufio.NewReaderSize(conn, 1024 * 8)
 	if err != nil {
 		log.Fatal("Failed building reader", err)
 	}
-	writer := bufio.NewWriter(*conn)
+	writer := bufio.NewWriter(conn)
 	
 	bufConn := bufio.NewReadWriter(reader, writer)
 
 	return &JSONConn{bufConn}
 }
 
-func (jsonConn *JSONConn) ReadJSON() (data *JSONData, err os.Error) {
+func (jsonConn *JSONConn) ReadJSON() (data JSONData, err os.Error) {
 	// Get our query from the client
 	input, _, err := jsonConn.bufConn.ReadLine()
 	if err != nil {
@@ -42,10 +42,10 @@ func (jsonConn *JSONConn) ReadJSON() (data *JSONData, err os.Error) {
 		return nil, err
 	}
 
-	return &parsedInput, nil
+	return parsedInput, nil
 }
 
-func (jsonConn *JSONConn) WriteJSON(data *JSONData) (err os.Error) {
+func (jsonConn *JSONConn) WriteJSON(data JSONData) (err os.Error) {
 	outputBytes, err := json.Marshal(data)
 	if err != nil {
 		log.Println("Failed to marshall", err)
@@ -53,6 +53,7 @@ func (jsonConn *JSONConn) WriteJSON(data *JSONData) (err os.Error) {
 	}
 	
 	jsonConn.bufConn.WriteString(string(outputBytes));
+	jsonConn.bufConn.Flush()
 
 	return nil
 }
