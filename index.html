@@ -39,7 +39,7 @@ uri
   <input type="button" value="Update Query" id="queryButton" name="queryButton" />
 </form>
 
-<input type="button" value="stop" name="stopBtn" class="button" />
+<input type="button" value="stop" id="stopButton" class="button" />
 
 
 <div id="output">
@@ -60,6 +60,7 @@ uri
 
   RW.init = function() {
       $('#queryButton').click(RW.onQueryClick);
+      $('#stopButton').click(RW.onStopClick);
   };
 
   RW.currentStream = null;
@@ -68,11 +69,17 @@ uri
       console.log("Query!");
       
       if (RW.currentStream) {
-        RW.currentStream.close();
+        RW.currentStream.stop();
       }
 
       RW.currentStream = new RW.RangerStream(RW.createQuery());
       
+  };
+
+  RW.onStopClick = function(evt) {
+    if (RW.currentStream) {
+      RW.currentStream.stop();  
+    }
   };
 
   RW.createQuery = function() {
@@ -82,6 +89,8 @@ uri
   RW.RangerStream = function(query) {
       var rangerStream = this;
       this.output = document.getElementById("output");
+      this.output.innerHTML = "";
+      
       this.websocket = new WebSocket("ws://localhost:"+8080+"/ws");
       this.websocket.onopen = function(evt) { rangerStream.onOpen(evt) };
       this.websocket.onclose = function(evt) { rangerStream.onClose(evt) };
@@ -91,6 +100,7 @@ uri
 
   RW.RangerStream.prototype.stop = function() {
       this.websocket.close();
+      this.output = null;
   };
 
   RW.RangerStream.prototype.onOpen = function(evt) {
@@ -104,8 +114,13 @@ uri
 
 
   RW.RangerStream.prototype.onMessage = function(evt) {
+      var rangerStream = this;
       console.log("received: " + evt.data);
-      this.writeToScreen(evt.data, 'info');
+      var obj = $.parseJSON(evt.data);
+      $.each(obj, function(key, value) {
+          rangerStream.writeToScreen(key + " : " + value);
+      });
+      this.writeToScreen("");
   }
 
   RW.RangerStream.prototype.onError = function(evt) {
@@ -119,8 +134,10 @@ uri
   }
 
   RW.RangerStream.prototype.writeToScreen = function(message, rule) {
-      this.output.innerHTML = message + "<br />" + output.innerHTML;
-      this.output.className=rule;
+      if (this.output) {
+        this.output.innerHTML = message + "<br />" + output.innerHTML;
+        this.output.className=rule;        
+      }
   }
   
   

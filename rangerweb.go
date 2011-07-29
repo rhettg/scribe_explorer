@@ -91,13 +91,21 @@ func ServeWS(socket *websocket.Conn) {
 
 		dirtySession := "NA"
 		dirtySessionBool, ok := GetDeep("extra.dirty_session", data)
-		if !ok {
-			log.Print("Missing dirty session")
-		} else {
+		if ok {
 			dirtySession = fmt.Sprintf("%t", dirtySessionBool)
 		}
 
-		socket.Write([]byte(fmt.Sprintf("%s: %s", uniqueRequestID, dirtySession)))
+		outputMap := map[string] interface{} {
+			"unique_request_id": uniqueRequestID,
+			"extra.dirty_session": dirtySession,
+		}
+
+		outputBytes, err := json.Marshal(outputMap)
+		if err != nil {
+			log.Fatal("Failed to marshall", err)
+		}
+		
+		socket.Write(outputBytes);
 	}
 }
 
