@@ -5,5 +5,6 @@ GOFILES=\
 	tail.go\
 	get_deep.go\
 	rangerweb.go\
+	filter.go
 
 include $(GOROOT)/src/Make.cmd

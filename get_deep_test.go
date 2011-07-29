@@ -15,15 +15,15 @@ type getDeepTest struct {
 }
 
 var getDeepTests = []getDeepTest{
-	getDeepTest{"a", 1, true},
+	getDeepTest{"a", 1., true},
 	getDeepTest{"b", "foo", true},
 	getDeepTest{"not_there", nil, false},
-	getDeepTest{"c", map[string]int{"d": 2}, true},
-	getDeepTest{"c.d", 2, true},
+	getDeepTest{"c", map[string]interface{}{"d": 2.}, true},
+	getDeepTest{"c.d", 2., true},
 	getDeepTest{"array.2", nil, false},
 	getDeepTest{"c.d.not_there", nil, false},
-	getDeepTest{"array", [2]int{2, 3}, true},
-	getDeepTest{"array.1", 3, true},
+	getDeepTest{"array", [2]float64{2., 3.}, true},
+	getDeepTest{"array.1", 3., true},
 	getDeepTest{"array.foo", nil, false},
 }
 
@@ -51,6 +51,7 @@ func TestGetDeep(t *testing.T) {
 	for _, test := range getDeepTests {
 		log.Println("Evaluating ", test.key)
 		value, ok := GetDeep(test.key, fixture)
+		log.Printf("test type: %T, value type: %T\n", test.value, value)
 		if ok != test.ok {
 			t.Errorf("For key '%s', expected ok = %t, but was %t", test.key, test.ok, ok)
 		}
