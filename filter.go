@@ -40,6 +40,10 @@ func ParseStatement(statement string) (filter Filter, ok bool) {
 	if ok {
 		return
 	}
+	filter, ok = NewComparisonFilter(statement)
+	if ok {
+		return
+	}
 	return
 }
 
@@ -83,4 +87,74 @@ func (f *SamplingFilter) Parse(query string) (ok bool, applicable bool, msg stri
 
 func (f SamplingFilter) Predicate(line JSONData) bool {
 	return rand.Float64() < f.rate
+}
+
+/*
+ * Comparison Filter
+ */
+type ComparisonFilter struct {
+	key string
+	operator func(a, b interface{}) bool
+	rhs interface{}
+}
+
+var comparisonOperators = map[string] (func(a, b interface{}) bool) {
+	"==": func(a, b interface{}) bool { return a == b },
+	"!=": func(a, b interface{}) bool { return a != b },
+	">=": func(a, b interface{}) bool { return a >= b },
+	"<=": func(a, b interface{}) bool { return a <= b },
+	"<": func(a, b interface{}) bool { return a < b },
+	">": func(a, b interface{}) bool { return a > b },
+}
+
+func NewComparisonFilter(query string) (f *ComparisonFilter, ok bool) {
+	f = new(ComparisonFilter)
+	ok, applicable, msg := f.Parse(query)
+	if applicable {
+		log.Print(msg)
+	} else {
+		ok = false
+	}
+	return
+}
+
+func (f *ComparisonFilter) Parse(query string) (ok bool, applicable bool, msg string) {
+	fields := strings.Split(query, " ", -1)
+	applicable = true
+	ok = true
+	if len(fields) == 3 {
+		key := fields[0]
+		opStr := fields[1]
+		rhs := fields[2]
+		
+		operator, operatorPresent := comparisonOperators[opStr]
+		if !operatorPresent {
+			ok = false	
+			msg = "%v is not a valid operator."
+			return
+		}else {
+			f.operator = operator
+		}
+
+		rhsFloat, err := strconv.Atoi(rhs)
+		if err == nil {
+			f.rhs = rhsFloat
+		}else {
+			f.rhs = rhs
+		}
+
+		f.key = key
+	}else {
+		applicable = false
+		ok = false
+	}
+	return
+}
+
+func (f ComparisonFilter) Predicate(line JSONData) bool {
+	lhs, ok := GetDeep(f.key, line)
+	if ok {
+		return f.operator(lhs, f.rhs)
+	}
+	return false
 }

@@ -115,6 +115,7 @@ func ServeWS(socket *websocket.Conn) {
 		log.Printf("Statement: ", statement)
 		filter, ok := ParseStatement(statement.(string))
 		if ok {
+			log.Printf("Parsed to filter: %v", filter)
 			filters = append(filters, filter)
 		}
 	}
