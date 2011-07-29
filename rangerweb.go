@@ -80,9 +80,43 @@ func ServeWS(socket *websocket.Conn) {
 	dataChan := make(chan JSONData)
 	rangerDataChan <- dataChan
 
+	lineStream, err := bufio.NewReaderSize(socket, 1024*32)
+	if err != nil {
+		log.Fatal("Failed to create reader", err)
+	}
+
+	// Get our query from the client
+	cmd, _, err := lineStream.ReadLine()
+	if err != nil {
+		log.Fatal("Failed to read from client", err)
+	}
+
+	log.Println("Found: ", string(cmd))
+
+	// Parse the query
+	var query JSONData
+	err = json.Unmarshal(cmd, &query)
+	if err != nil {
+		log.Printf("Failure to decode: %s", cmd, err)
+		log.Println(string(cmd))
+		return
+	}
+
+	displayFields := []string{}
+	for _, fieldValue := range query.(map[string] interface{})["fields"].([]interface{}) {
+		log.Printf("Field: ", fieldValue)
+		displayFields = append(displayFields, fieldValue.(string))
+	}
+
 	for {
 		data := <-dataChan
+		
+		outputMap := map[string] interface{}{}
+		for _, fieldValue := range displayFields {
+			outputMap[fieldValue], _ = GetDeep(fieldValue, data)
+		}
 
+		/*
 		uniqueRequestID, ok := GetDeep("unique_request_id", data)
 
 		if !ok {
@@ -99,6 +133,7 @@ func ServeWS(socket *websocket.Conn) {
 			"unique_request_id": uniqueRequestID,
 			"extra.dirty_session": dirtySession,
 		}
+		*/
 
 		outputBytes, err := json.Marshal(outputMap)
 		if err != nil {

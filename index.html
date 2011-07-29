@@ -36,6 +36,9 @@
 unique_request_id
 uri
   </textarea>
+  <textarea id="queryFilters">
+  </textarea>
+
   <input type="button" value="Update Query" id="queryButton" name="queryButton" />
 </form>
 
@@ -81,11 +84,20 @@ uri
   };
 
   RW.createQuery = function() {
-    var fieldSplit = $('#displayFields').val().split(/\s+/);
-    var query = {fields: [], filter: []}
+    var fieldSplit = $('#displayFields').val().split(/\n/);
+    var query = {fields: [], filters: []}
     for (var i in fieldSplit) {
-      if (fieldSplit[i]) {
-        query.fields.push(fieldSplit[i])
+      var field = fieldSplit[i].replace(/\s+/, "");
+      if (field) {
+        query.fields.push(field)
+      }
+    }
+
+    var filterSplit = $('#queryFilters').val().split(/\n/);
+    for (var i in filterSplit) {
+      var filter = filterSplit[i].replace(/\s+/, "");
+      if (filter) {
+        query.filters.push(filter)
       }
     }
 
@@ -95,6 +107,7 @@ uri
   RW.RangerStream = function(query) {
       console.log(query);
       var rangerStream = this;
+      this.query = query;
       this.output = document.getElementById("output");
       this.output.innerHTML = "<table id=\'outputTable'\></table>";
 
@@ -113,7 +126,8 @@ uri
       this.websocket.onmessage = function(evt) { rangerStream.onMessage(evt) };
       this.websocket.onerror = function(evt) { rangerStream.onError(evt) };
       
-      this.rowLimit = 20;        
+      this.rowLimit = 20;
+
   };
 
   RW.RangerStream.prototype.stop = function() {
@@ -123,6 +137,7 @@ uri
 
   RW.RangerStream.prototype.onOpen = function(evt) {
     console.log("connected");
+    this.websocket.send(JSON.stringify(this.query) + '\n');
   };
 
   RW.RangerStream.prototype.onClose = function(evt) {
@@ -155,10 +170,6 @@ uri
       console.log("error: " + evt);
   }
 
-  RW.RangerStream.prototype.doSend = function(message) {
-      this.websocket.send(message);
-  }
-  
   $(document).ready(RW.init);
 </script>
 </html>
