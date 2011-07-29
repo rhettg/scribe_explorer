@@ -235,7 +235,7 @@ uri
 
     var filterSplit = $('#queryFilters').val().split(/\n/);
     for (var i in filterSplit) {
-      var filter = filterSplit[i].replace(/\s+/, "");
+      var filter = jQuery.trim(filterSplit[i]) //.replace(/\s+/, "");
       if (filter) {
         query.filters.push(filter)
       }
