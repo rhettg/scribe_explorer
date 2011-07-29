@@ -100,15 +100,25 @@ uri
 
   RW.RangerStream = function(query) {
       var rangerStream = this;
-      //this.output = document.getElementById("output");
-      //this.output.innerHTML = "<table id=\'outputTable'\></table>";
-      $('#outputTable').dataTable();
+      this.output = document.getElementById("output");
+      this.output.innerHTML = "<table id=\'outputTable'\></table>";
+
+      this.keys = ['unique_request_id', 'extra.dirty_session'];
+
+      $('#outputTable').append("<thead><tr id='outputTableHeader'></th></tr></thead>");
+      for (var ndx in this.keys) {
+        $('#outputTableHeader').append("<th>" + this.keys[ndx] + "</th>");  
+      }      
+
+      $('#outputTable').append("<tbody id='outputTableBody'></tbody>");
       
       this.websocket = new WebSocket("ws://localhost:"+8080+"/ws");
       this.websocket.onopen = function(evt) { rangerStream.onOpen(evt) };
       this.websocket.onclose = function(evt) { rangerStream.onClose(evt) };
       this.websocket.onmessage = function(evt) { rangerStream.onMessage(evt) };
-      this.websocket.onerror = function(evt) { rangerStream.onError(evt) };        
+      this.websocket.onerror = function(evt) { rangerStream.onError(evt) };
+      
+      this.rowLimit = 20;        
   };
 
   RW.RangerStream.prototype.stop = function() {
@@ -130,14 +140,21 @@ uri
       var rangerStream = this;
       console.log("received: " + evt.data);
       var obj = $.parseJSON(evt.data);
-      row = new Array();
-      $.each(obj, function(key, value) {
-          row.push(value);
-          //rangerStream.writeToScreen(key + " : " + value);
-      });
-      //this.writeToScreen("");
-      console.log("new row: " + row);
-      $('#outputTable').dataTable().fnAddData(row);
+      
+      var content = "<tr>"
+      for (var ndx in this.keys) {
+        var val = obj[this.keys[ndx]];
+        content += "<td>" + val + "</td>"
+      }
+      content += "</tr>"
+      
+      $('#outputTableBody').prepend(content)
+      if (this.rowLimit > 0) {
+        this.rowLimit -= 1;
+      }
+      else {
+        $('#outputTableBody tr:last-child').remove();
+      }
   }
 
   RW.RangerStream.prototype.onError = function(evt) {
