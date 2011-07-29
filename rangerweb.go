@@ -10,6 +10,8 @@ import (
 	"websocket"
 	"log"
 	"json"
+	"net"
+	"net/textproto"
 )
 
 type LineReader interface {
@@ -173,6 +175,49 @@ func ServePage(writer http.ResponseWriter, request *http.Request) {
 
 }
 
+func serveTCP(conn *textproto.Conn) {
+	defer conn.Close()
+	
+	for {
+		cmd, err := conn.ReadLine()
+		if err != nil {
+			log.Println("Failed reading line", err)
+			break
+		}
+		
+		err = conn.PrintfLine(cmd)
+		if err != nil {
+			log.Println("Failed writing line", err)
+			break
+		}
+	}
+}
+
+func listenTCPClients() {
+	
+	ipAddr, err := net.ResolveIPAddr("tcp4", "127.0.0.1")
+	if err != nil {
+		log.Fatal("Failed to resolve", err)
+	}
+
+	addr := net.TCPAddr{ipAddr.IP, 3535}
+
+	listener, err := net.ListenTCP("tcp4", &addr)
+	if err != nil {
+		log.Fatal("Failed to listen", err)
+	}
+
+	for {
+		conn, err := listener.Accept()
+		if err != nil {
+			log.Fatal("Failed to accept", err)
+		}
+
+		protoConn := textproto.NewConn(conn)
+		go serveTCP(protoConn)
+	}
+}
+
 
 func main() {
 	log.Println("Starting up")
@@ -187,6 +232,8 @@ func main() {
 	}
 
 	go streamData(lineStream)
+
+	go listenTCPClients()
 
 	http.Handle("/", http.HandlerFunc(ServePage))
 	http.Handle("/ws", websocket.Handler(ServeWS))
