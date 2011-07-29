@@ -18,20 +18,44 @@ type LineReader interface {
 }
 
 var (
-	rangerDataChan chan (chan JSONData)
+	rangerDataChan chan DataChannelRequest
 	allChannels    [](chan JSONData)
 )
 
 func init() {
-	rangerDataChan = make(chan (chan JSONData))
+	rangerDataChan = make(chan DataChannelRequest)
+	allChannels = make([](chan JSONData), 0, 64)
+}
+
+type DataChannelRequest struct {
+	data chan JSONData
+	response chan int
 }
 
 func acceptChannels() {
 	for {
-		newChannel := <-rangerDataChan
-		log.Printf("Adding new channel to data stream")
-		allChannels = append(allChannels, newChannel)
+		channelNdx := -1
+		
+		channelRequest := <-rangerDataChan
+		
+		for ndx, value := range(allChannels) {
+			if value == nil {
+				allChannels[ndx] = channelRequest.data
+				channelNdx = ndx
+			}
+		}
+		if channelNdx < 0 {
+			allChannels = append(allChannels, channelRequest.data)
+			channelNdx = (len(allChannels) - 1)
+		}
+		log.Printf("Adding new channel %d to data stream", channelNdx)
+		channelRequest.response <- channelNdx
 	}
+}
+
+func dropChannel(channelIndex int) {
+	log.Println("Dropping channel", channelIndex)
+	allChannels[channelIndex] = nil
 }
 
 func streamData(lineStream LineReader) {
@@ -59,8 +83,16 @@ func streamData(lineStream LineReader) {
 		}
 
 		// Now deliver this fine chunk of ranger data to each of our listeners
-		for _, webChannel := range allChannels {
-			webChannel <- data
+
+		for ndx, webChannel := range allChannels {
+			if webChannel != nil {
+				// We don't want to be blocking waiting on the channel, if it can't keep up we'll drop the data.
+				select {
+					case webChannel <- data:
+					default:
+						log.Println("Dropping data to channel", ndx)
+				}
+			}
 		}
 	}
 	log.Printf("All done with data stream")
@@ -102,10 +134,15 @@ func serveTCP(conn net.Conn) {
 	ServeStream(jsonStream)
 }
 
+
 func ServeStream(stream *JSONConn) {
 	// Create a new channel to receive data on
-	dataChan := make(chan JSONData)
-	rangerDataChan <- dataChan
+	dataChan := make(chan JSONData, 16)
+	responseChan := make(chan int)
+	rangerDataChan <- DataChannelRequest{dataChan, responseChan}
+	channelIndex := <-responseChan
+
+	defer dropChannel(channelIndex)
 
 	// Get our query from the client
 	query, err := stream.ReadJSON()
