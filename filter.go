@@ -101,12 +101,10 @@ type ComparisonFilter struct {
 var comparisonOperators = map[string] (func(a, b interface{}) bool) {
 	"==": func(a, b interface{}) bool { return a == b },
 	"!=": func(a, b interface{}) bool { return a != b },
-	/*
-	">=": func(a, b interface{}) bool { return a >= b },
-	"<=": func(a, b interface{}) bool { return a <= b },
-	"<": func(a, b interface{}) bool { return a < b },
-	">": func(a, b interface{}) bool { return a > b },
-	*/
+	">=": func(a, b interface{}) bool { return a.(float64) >= b.(float64) },
+	"<=": func(a, b interface{}) bool { return a.(float64) <= b.(float64) },
+	"<": func(a, b interface{}) bool { return a.(float64) < b.(float64) },
+	">": func(a, b interface{}) bool { return a.(float64) > b.(float64) },
 }
 
 func NewComparisonFilter(query string) (f *ComparisonFilter, ok bool) {
@@ -138,7 +136,7 @@ func (f *ComparisonFilter) Parse(query string) (ok bool, applicable bool, msg st
 			f.operator = operator
 		}
 
-		rhsFloat, err := strconv.Atoi(rhs)
+		rhsFloat, err := strconv.Atof64(rhs)
 		if err == nil {
 			f.rhs = rhsFloat
 		}else {
