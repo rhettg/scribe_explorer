@@ -108,10 +108,24 @@ func ServeWS(socket *websocket.Conn) {
 		displayFields = append(displayFields, fieldValue.(string))
 	}
 
+	filters := []Filter{}
+	for _, statement := range query.(map[string] interface{})["filters"].([]interface{}) {
+		log.Printf("Statement: ", statement)
+		filter, ok := ParseStatement(statement.(string))
+		if ok {
+			filters = append(filters, filter)
+		}
+	}
+
+
 	for {
 		data := <-dataChan
 		
+		if !PassesAllFilters(data, filters) {
+			continue
+		}
 		outputMap := map[string] interface{}{}
+		
 		for _, fieldValue := range displayFields {
 			outputMap[fieldValue], _ = GetDeep(fieldValue, data)
 		}
