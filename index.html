@@ -43,6 +43,16 @@ uri
 
 
 <div id="output">
+<table cellpadding="0" cellspacing="0" border="0" class="display" id="outputTable"> 
+  <thead> 
+    <tr> 
+      <th>Column 1</th> 
+      <th>Column 2</th> 
+    </tr> 
+  </thead> 
+  <tbody> 
+  </tbody> 
+</table>
 </div>
 
 
@@ -54,6 +64,8 @@ uri
 <script type="text/javascript" language="javascript">
   google.load("jquery", "1.6.2");
 </script>
+<script type="text/javascript" src="http://www.datatables.net/release-datatables/media/js/jquery.dataTables.js"></script>
+
 
 <script language="javascript" type="text/javascript">
   var RW = RW || {};
@@ -88,8 +100,9 @@ uri
 
   RW.RangerStream = function(query) {
       var rangerStream = this;
-      this.output = document.getElementById("output");
-      this.output.innerHTML = "";
+      //this.output = document.getElementById("output");
+      //this.output.innerHTML = "<table id=\'outputTable'\></table>";
+      $('#outputTable').dataTable();
       
       this.websocket = new WebSocket("ws://localhost:"+8080+"/ws");
       this.websocket.onopen = function(evt) { rangerStream.onOpen(evt) };
@@ -117,10 +130,14 @@ uri
       var rangerStream = this;
       console.log("received: " + evt.data);
       var obj = $.parseJSON(evt.data);
+      row = new Array();
       $.each(obj, function(key, value) {
-          rangerStream.writeToScreen(key + " : " + value);
+          row.push(value);
+          //rangerStream.writeToScreen(key + " : " + value);
       });
-      this.writeToScreen("");
+      //this.writeToScreen("");
+      console.log("new row: " + row);
+      $('#outputTable').dataTable().fnAddData(row);
   }
 
   RW.RangerStream.prototype.onError = function(evt) {
