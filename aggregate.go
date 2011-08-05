@@ -23,11 +23,11 @@ func NewGetDeepExpression(expr string) (gd *GetDeepExpression, err os.Error) {
 	if err != nil {
 		return nil, err
 	}
-	err = gd.Setup([]Expression{exprLiteral})
+	err = gd.Setup("GetDeep", []Expression{exprLiteral})
 	return
 }
 
-func (gd *GetDeepExpression) Setup(args []Expression) (err os.Error) {
+func (gd *GetDeepExpression) Setup(fname string, args []Expression) (err os.Error) {
 	if len(args) != 1 {
 		return fmt.Errorf("GetDeep expects one argument, a string GetDeep expression")
 	}
@@ -56,22 +56,34 @@ func (gd *GetDeepExpression) String() string {
  * Subtract(expr1, expr2 float64) -> float64
  */
 
-type Subtract struct {
+type ArithmeticOperator struct {
 	expr1 Expression
 	expr2 Expression
+	fname string
 }
 
-func (s *Subtract) Setup(args []Expression) (err os.Error) {
+var arithmeticOperators = map[string](func(a, b float64) float64){
+	"Add":      func(a, b float64) float64 { return a + b },
+	"Subtract": func(a, b float64) float64 { return a - b },
+	"Divide":   func(a, b float64) float64 { return a / b },
+	"Multiply": func(a, b float64) float64 { return a * b },
+}
+
+func (o *ArithmeticOperator) Setup(fname string, args []Expression) (err os.Error) {
 	if len(args) != 2 {
-		return fmt.Errorf("Subtract expects two arguments, expressions that can be evaluated to numeric types")
+		return fmt.Errorf("ArithmeticOperator expects two arguments, expressions that can be evaluated to numeric types")
 	}
-	s.expr1, s.expr2 = args[0], args[1]
+	if _, ok := arithmeticOperators[fname]; !ok {
+		return fmt.Errorf("%v is not a supported ArithmeticOperator", fname)
+	}
+	o.expr1, o.expr2 = args[0], args[1]
+	o.fname = fname
 	return nil
 }
 
-func (s *Subtract) Evaluate(data JSONData) (result interface{}, err os.Error) {
-	val1, err1 := s.expr1.Evaluate(data)
-	val2, err2 := s.expr2.Evaluate(data)
+func (o *ArithmeticOperator) Evaluate(data JSONData) (result interface{}, err os.Error) {
+	val1, err1 := o.expr1.Evaluate(data)
+	val2, err2 := o.expr2.Evaluate(data)
 	if err1 != nil {
 		return nil, fmt.Errorf("Expression 1 could not be evaluated, %v", err2)
 	}
@@ -84,14 +96,14 @@ func (s *Subtract) Evaluate(data JSONData) (result interface{}, err os.Error) {
 		return nil, fmt.Errorf("Subtract expects a float64, Expression 1 was type %T, val %v", val1, val1)
 	}
 	if !ok2 {
-		return nil, fmt.Errorf("Subtract expects a float64, Expression 2 was type %T, val %v", val2, val1)
+		return nil, fmt.Errorf("Subtract expects a float64, Expression 2 was type %T, val %v", val2, val2)
 	}
 
-	return val1.(float64) - val2.(float64), nil
+	return arithmeticOperators[o.fname](val1.(float64), val2.(float64)), nil
 }
 
-func (s *Subtract) String() string {
-	return fmt.Sprintf("Subtract(%v,%v)", s.expr1, s.expr2)
+func (o *ArithmeticOperator) String() string {
+	return fmt.Sprintf("%v(%v,%v)", o.fname, o.expr1, o.expr2)
 }
 
 /*
@@ -108,7 +120,7 @@ func (ra *RollingAverage) String() string {
 	return fmt.Sprintf("RollingAverage(%v,%v)", ra.expr, ra.windowSize)
 }
 
-func (ra *RollingAverage) Setup(args []Expression) (err os.Error) {
+func (ra *RollingAverage) Setup(fname string, args []Expression) (err os.Error) {
 	if len(args) != 2 {
 		return fmt.Errorf("RollingAverage must have 2 args, a float64 value, and a positive int window size. Got %v", args)
 	}

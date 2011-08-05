@@ -35,7 +35,7 @@ type RandomSample struct {
 	rate Expression
 }
 
-func (f *RandomSample) Setup(args []Expression) (err os.Error) {
+func (f *RandomSample) Setup(fname string, args []Expression) (err os.Error) {
 	if len(args) != 1 {
 		return fmt.Errorf("RandomSample takes a single argument, a float between 0 and 1")
 	}

@@ -48,7 +48,7 @@ func ParseString(statement string) (fname string, args []string, err os.Error) {
 }
 
 type Expression interface {
-	Setup(args []Expression) (err os.Error)
+	Setup(fname string, args []Expression) (err os.Error)
 	Evaluate(data JSONData) (result interface{}, err os.Error)
 	String() string
 }
@@ -65,7 +65,7 @@ func (l *Literal) Evaluate(data JSONData) (result interface{}, err os.Error) {
 	return l.value, nil
 }
 
-func (l *Literal) Setup(args []Expression) (err os.Error) {
+func (l *Literal) Setup(fname string, args []Expression) (err os.Error) {
 	// this ain't right
 	return nil
 }
@@ -119,18 +119,19 @@ func Parse(statement string) (expr Expression, err os.Error) {
 		expressionArgs = append(expressionArgs, argExpr)
 	}
 
-	switch fname {
-	case "RandomSample":
+	switch {
+	case fname == "RandomSample":
 		expr = new(RandomSample)
-	case "GetDeep":
+	case fname == "GetDeep":
 		expr = new(GetDeepExpression)
-	case "Subtract":
-		expr = new(Subtract)
-	case "RollingAverage":
+	case fname == "Subtract" || fname == "Add" || fname == "Divide" || fname == "Multiply":
+		expr = new(ArithmeticOperator)
+		log.Printf("creating an arithmetic operator", fname)
+	case fname == "RollingAverage":
 		expr = new(RollingAverage)
 	default:
 		return nil, fmt.Errorf("Unrecognized function name '%s'", fname)
 	}
-	err = expr.Setup(expressionArgs)
+	err = expr.Setup(fname, expressionArgs)
 	return
 }
