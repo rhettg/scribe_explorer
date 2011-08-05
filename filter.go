@@ -6,91 +6,61 @@ import (
 	"fmt"
 	"rand"
 	"log"
+	"os"
 )
 
-type Filter interface {
-	Parse(query string) (ok bool, applicable bool, msg string)
-	Predicate(line JSONData) bool
-}
-
-func PassesAllFilters(line JSONData, filters []Filter) bool {
+func PassesAllFilters(line JSONData, filters []Expression) (result bool, err os.Error) {
 	for _, filter := range filters {
-		if !filter.Predicate(line) {
-			return false
+		passes, err := filter.Evaluate(line)
+		if err != nil {
+			return false, err
+		}
+		passes, ok := passes.(bool)
+		if !ok {
+			return false, fmt.Errorf("Expected a boolean, got %v", passes)
+		}
+		if !passes.(bool) {
+			return false, nil
 		}
 	}
-	return true
-}
-
-func ParseFilters(statements []string) (filters []Filter, ok bool) {
-	for i, statement := range statements {
-		filter, ok := ParseStatement(statement)
-		if ok {
-			filters[i] = filter
-		} else {
-			log.Printf("Couldn't parse %s", statement)
-			break
-		}
-	}
-	return
-}
-
-func ParseStatement(statement string) (filter Filter, ok bool) {
-	filter, ok = NewSamplingFilter(statement)
-	if ok {
-		return
-	}
-	filter, ok = NewComparisonFilter(statement)
-	if ok {
-		return
-	}
-	return
-}
-
-type SamplingFilter struct {
-	rate float64
-}
-
-func NewSamplingFilter(query string) (f *SamplingFilter, ok bool) {
-	f = new(SamplingFilter)
-	ok, applicable, msg := f.Parse(query)
-	if applicable {
-		log.Print(msg)
-	} else {
-		ok = false
-	}
-	return
-}
-
-func (f *SamplingFilter) Parse(query string) (ok bool, applicable bool, msg string) {
-	fields := strings.Split(query, " ", -1)
-	if fields[0] == "SAMPLE" {
-		applicable = true
-		if len(fields) == 2 {
-			rate, err := strconv.Atof64(fields[1])
-			if err != nil {
-				ok = false
-				msg = "Cannot parse rate " + fields[1] + " as a float"
-				return
-			}
-			f.rate = rate
-			if f.rate > 1 || f.rate < 0 {
-				ok = false
-				f.rate = -1
-				msg = "Rate must be between 0 and 1"
-			}
-			return true, true, fmt.Sprintf("Sampling with rate %d", f.rate)
-		}
-	}
-	return true, false, "N/A"
-}
-
-func (f SamplingFilter) Predicate(line JSONData) bool {
-	return rand.Float64() < f.rate
+	return true, nil
 }
 
 /*
+ * RandomSample(float64)
+ *
+ * Returns a boolean true with probability given by the first and only argument.
+ */
+type RandomSample struct {
+	rate Expression
+}
+
+func (f *RandomSample) Setup(args []Expression) (err os.Error) {
+	if len(args) != 1 {
+		return fmt.Errorf("RandomSample takes a single argument, a float between 0 and 1")
+	}
+	f.rate = args[0]
+	return
+}
+
+func (f *RandomSample) Evaluate(data JSONData) (result interface{}, err os.Error) {
+	sampleRate, err := f.rate.Evaluate(data)
+	if err != nil {
+		return false, err
+	}
+	if sampleRate, ok := sampleRate.(float64); !ok {
+		return false, fmt.Errorf("RandomSample takes a single argument, a float between 0 and 1. Got %v", sampleRate)
+	}
+	return rand.Float64() < sampleRate.(float64), nil
+}
+
+func (f *RandomSample) String() string {
+	return fmt.Sprintf("RandomSample(%v)", f.rate)
+}
+/*
  * Comparison Filter
+ * 
+ * XXX: Broken with the new parser. They need to be rewritten to the Expression interface.
  */
 type ComparisonFilter struct {
 	key string

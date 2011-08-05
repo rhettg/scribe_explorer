@@ -25,12 +25,10 @@ func GetDeep(key string, data JSONData) (dataStep interface{}, ok bool) {
 		case []interface{}:
 			arrayIndex, err := strconv.Atoi(subKey)
 			if err != nil {
-				log.Println("can't interpret %v as an array index", subKey)
 				return nil, false
 			}
 			defer func() {
 				if e := recover(); e != nil {
-					log.Println("Array index out of bound")
 					dataStep = nil
 					ok = false
 				}
@@ -44,3 +42,26 @@ func GetDeep(key string, data JSONData) (dataStep interface{}, ok bool) {
 	}
 	return dataStep, true
 }
+
+
+/*
+ * GetDeepExpr
+type GetDeepExpr struct {
+	expr string
+}
+
+func (f *GetDeepExpr) Parse(args []string) (err os.Error) {
+	if len(args) != 1 {
+		return fmt.Errorf("GetDeepValue expects 1 argument, the GetDeep expression. Instead got %v", args)
+	}
+	f.expr = args[0]
+}
+
+func (f *GetDeepExpr) Evaluate() (data JSONData) {
+	return GetDeep(f.expr, line)
+}
+
+func (f *GetDeepExpr) String() {
+	return f.expr
+}
+*/

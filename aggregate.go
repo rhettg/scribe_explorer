@@ -1,162 +1,149 @@
 package main
 
 import (
-	"strings"
 	"strconv"
-	"log"
-	"fmt"
+	"os"
 	"container/list"
+	"fmt"
 )
 
-type Aggregator interface {
-	Parse(params []string, query string) (msg string, ok bool)
-	Push(element JSONData) interface{}
-	String() string
+
+/*
+ * GetDeep(string) or string -> interface{}
+ *
+ * Performs a GetDeep() lookup on the JSONData. Returns
+ */
+type GetDeepExpression struct {
+	expr Expression
 }
 
-func ParseAggregatorStatement(query string) (a Aggregator) {
-	aggType, params, ok := ParseParameters(query)
-	if !ok {
-		return nil
+func NewGetDeepExpression(expr string) (gd *GetDeepExpression, err os.Error) {
+	gd = new(GetDeepExpression)
+	exprLiteral, err := ParseLiteral(strconv.Quote(expr))
+	if err != nil {
+		return nil, err	
 	}
-	if aggType == "Timer" {
-		log.Printf("creating a Timer")
-		a = new(Timer)
-	}
-	if aggType == "MovingTimer" {
-		log.Printf("creating a MovingTimer")
-		a = new(MovingTimer)
-	}
-	msg, ok := a.Parse(params, query)
-	if !ok {
-		log.Printf("Couldn't initialize aggregator with params %v:%v", params, msg)
-		return nil
-	}
+	err = gd.Setup([]Expression{exprLiteral})
 	return
 }
 
-func ParseParameters(query string) (aggregator string, parameters []string, ok bool) {
-	fields := strings.Split(query, " ", -1)
-	ok = len(fields) > 1
-	return fields[0], fields[1:], ok
-}
-
-type Timer struct {
-	expr1 string
-	expr2 string
-	query string
-}
-
-func (t *Timer) String() string {
-	return t.query
-}
-
-func (t *Timer) Parse(params []string, query string) (msg string, ok bool) {
-	if len(params) != 2 {
-		return "Must have two fields", false
+func (gd *GetDeepExpression) Setup(args []Expression) (err os.Error) {
+	if len(args) != 1 {
+		return fmt.Errorf("GetDeep expects one argument, a string GetDeep expression")
 	}
-	t.expr1 = params[0]
-	t.expr2 = params[1]
-	t.query = query
-	return fmt.Sprintf("Timing between %v and %v", t.expr1, t.expr2), true
+	gd.expr = args[0]
+	return nil
 }
 
-func (t *Timer) Push(data JSONData) interface{} {
-	val1, ok1 := GetDeep(t.expr1, data)
-	val2, ok2 := GetDeep(t.expr2, data)
-	if ok1 && ok2 {
-		return val2.(float64) - val1.(float64)
+func (gd *GetDeepExpression) Evaluate(data JSONData) (result interface{}, err os.Error) {
+	key, err := gd.expr.Evaluate(data)
+	if err != nil{
+		return nil, err
 	}
-	return -1.
+	if key, ok := key.(string); key == "" || !ok {
+		return nil, fmt.Errorf("Expected non-empty string. Was type %T \"%v\"", key, key)
+	}
+	result, _ = GetDeep(key.(string), data)
+	return
 }
 
-type MovingTimer struct {
-	expr1 string
-	expr2 string
-	query string
-	windowSize int
+func (gd *GetDeepExpression) String() string {
+	return gd.expr.String()
+}
+
+
+/*
+ * Subtract(expr1, expr2 float64) -> float64
+ */
+
+type Subtract struct {
+	expr1 Expression
+	expr2 Expression
+}
+
+func (s *Subtract) Setup(args []Expression) (err os.Error) {
+	if len(args) != 2 {
+		return fmt.Errorf("Subtract expects two arguments, expressions that can be evaluated to numeric types")
+	}
+	s.expr1, s.expr2 = args[0], args[1]
+	return nil
+}
+
+func (s *Subtract) Evaluate(data JSONData) (result interface{}, err os.Error) {
+	val1, err1 := s.expr1.Evaluate(data)
+	val2, err2 := s.expr2.Evaluate(data)
+	if err1 != nil {
+		return nil, fmt.Errorf("Expression 1 could not be evaluated, %v", err2)
+	}
+	if err2 != nil {
+		return nil, fmt.Errorf("Expression 1 could not be evaluated, %v", err2)
+	}
+	val1, ok1 := val1.(float64)
+	val2, ok2 := val2.(float64)
+	if !ok1 {
+		return nil, fmt.Errorf("Subtract expects a float64, Expression 1 was type %T, val %v", val1, val1)
+	}
+	if !ok2 {
+		return nil, fmt.Errorf("Subtract expects a float64, Expression 2 was type %T, val %v", val2, val1)
+	}
+
+	return val1.(float64) - val2.(float64), nil
+}
+
+func (s *Subtract) String() string {
+	return fmt.Sprintf("Subtract(%v,%v)", s.expr1, s.expr2)
+}
+
+/*
+ * RollingAverage(x float64, windowSize int) -> float64
+ */
+type RollingAverage struct {
+	expr Expression
+	windowSize Expression
 	window list.List
 	sum float64
 }
 
-func (t *MovingTimer) String() string {
-	return t.query
+func (ra *RollingAverage) String() string {
+	return fmt.Sprintf("RollingAverage(%v,%v)", ra.expr, ra.windowSize)
 }
 
-func (t *MovingTimer) Parse(params []string, query string) (msg string, ok bool) {
-	if len(params) != 3 {
-		return "Must have three fields", false
+func (ra *RollingAverage) Setup(args []Expression) (err os.Error) {
+	if len(args) != 2 {
+		return fmt.Errorf("RollingAverage must have 2 args, a float64 value, and a positive int window size. Got %v", args)
 	}
-	t.expr1 = params[0]
-	t.expr2 = params[1]
+	ra.expr = args[0]
+	ra.windowSize = args[1]
 	
-	wSize, err := strconv.Atoi(params[2])
-	if err != nil || wSize <= 0 {
-		return fmt.Sprintf("Couldn't parse %v as an unsigned int", params[2]), false
-	}
-	t.windowSize = wSize
-	t.query = query
-
-	return fmt.Sprintf("Timing between %v and %v over window size %d", t.expr1, t.expr2, t.windowSize), true
+	return nil
 }
 
-func (t *MovingTimer) Push(data JSONData) interface{} {
-	val1, ok1 := GetDeep(t.expr1, data)
-	val2, ok2 := GetDeep(t.expr2, data)
-	if ok1 && ok2 {
-		time := val2.(float64) - val1.(float64)
-		t.window.PushFront(time)
-		t.sum += time
-		if t.window.Len() > t.windowSize {
-			lastElem := t.window.Back()
-			t.sum -= lastElem.Value.(float64)
-			t.window.Remove(lastElem)
-		}
-		return t.sum / float64(t.window.Len())
+func (ra *RollingAverage) Evaluate(data JSONData) (result interface{}, err os.Error) {
+	value, err := ra.expr.Evaluate(data)
+	if err != nil {
+		return nil, err
 	}
-	return -1.
+	if value, ok := value.(float64); !ok {
+		return nil, fmt.Errorf("RollingAverage expects a float64, got a %T, %v", value, value)
+	}
+	wSize, err := ra.windowSize.Evaluate(data)
+	if err != nil {
+		return nil, err
+	}
+	if wSize, ok := wSize.(int); !ok {
+		return nil, fmt.Errorf("RollingAverage expects an int window size. Got a %T, %v", wSize, wSize)
+	}
+	ave := ra.Push(value.(float64), wSize.(int))
+	return ave, nil
 }
 
-type MovingHistogram struct {
-	expr string
-	query string
-	windowSize int
-	window list.List
-	hist map[interface{}]int
-}
-
-func (t *MovingHistogram) Parse(params []string, query string) (msg string, ok bool) {
-	if len(params) != 2 {
-		return "Must have two fields", false
+func (ra *RollingAverage) Push(val float64, windowSize int) float64 {
+	ra.window.PushFront(val)
+	ra.sum += val 
+	if ra.window.Len() > windowSize {
+		lastElem := ra.window.Back()
+		ra.sum -= lastElem.Value.(float64)
+		ra.window.Remove(lastElem)
 	}
-	t.expr = params[0]
-	
-	wSize, err := strconv.Atoi(params[1])
-	if err != nil || wSize <= 0 {
-		return fmt.Sprintf("Couldn't parse %v as an unsigned int", params[2]), false
-	}
-	t.windowSize = wSize
-	t.query = query
-
-	return fmt.Sprintf("Moving histogram on %v over window size %d", t.expr, t.windowSize), true
-}
-
-func (t *MovingHistogram) Push(data JSONData) interface{} {
-	val, ok := GetDeep(t.expr, data)
-	if ok {
-		t.window.PushFront(val)
-		currentCount, ok := t.hist[val]
-		if !ok {
-			t.hist[val] = 1
-		}else {
-			t.hist[val] = currentCount + 1
-		}
-		if t.window.Len() > t.windowSize {
-			lastElem := t.window.Back()
-			t.hist[lastElem.Value] -= 1
-			t.window.Remove(lastElem)
-		}
-		return t.hist
-	}
-	return -1.
+	return ra.sum / float64(ra.window.Len())
 }

@@ -6,25 +6,35 @@ import (
 	"os"
 )
 
-type parseFunctionTest struct {
+type parseStringTest struct {
 	statement string
 	fname string
 	args []string
-	err os.Error 
+	ok bool
 }
 
-var parseFunctionTests = []parseFunctionTest {
-	parseFunctionTest{"Subtract(a)", "Subtract", []string{"a",}, nil},
-	parseFunctionTest{"Subtract(a,b)", "Subtract", []string{"a", "b"}, nil},
+var parseStringTests = []parseStringTest {
+	parseStringTest{"Foo(a", "", []string{}, false},
+	parseStringTest{"Foo(1,2)", "Foo", []string{"1", "2"}, true},
+	parseStringTest{"Subtract(a)", "Subtract", []string{"a",}, true},
+	parseStringTest{"Subtract(a,b)", "Subtract", []string{"a", "b"}, true},
+	parseStringTest{"Subtract(a,b,c)", "Subtract", []string{"a", "b", "c"}, true},
+	parseStringTest{"Foo(Bar(abc),bc)", "Foo", []string{"Bar(abc)", "bc"}, true},
+	parseStringTest{"Foo(Bar(a,b),c,de)", "Foo", []string{"Bar(a,b)", "c", "de"}, true},
+	parseStringTest{"Foo(a,Bar(b,c)", "", []string{}, false}, // Unbalanced parens
+	parseStringTest{"foo", "", []string{}, false},
 }
 
 func TestParseFunction(t *testing.T) {
-	for _, test := range parseFunctionTests {
-		fname, args, err := ParseFunction(test.statement)
-		if err != test.err {
-			t.Errorf("For statement '%s', expected err = %v, but was %v", test.statement, test.err, err)
+	for _, test := range parseStringTests {
+		fname, args, err := ParseString(test.statement)
+		if test.ok && err != nil {
+			t.Errorf("For statement '%s', expected nil err, but was %v", test.statement, err)
 		}
 
+		if !test.ok && err == nil {
+			t.Errorf("For statement '%s', expected err, but was nil", test.statement)
+		}
 		if fname != test.fname {
 			t.Errorf("For statement '%s', expected fname = %v, but was %v", test.statement, test.fname, aggregator)
 		}

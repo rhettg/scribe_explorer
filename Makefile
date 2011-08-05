@@ -7,6 +7,7 @@ GOFILES=\
 	rangerweb.go\
 	filter.go\
 	aggregate.go\
+	parse.go\
 	json_io.go
 
 include $(GOROOT)/src/Make.cmd

@@ -91,27 +91,25 @@ func ServeStream(stream *JSONConn) {
 	defer func() {scribeStream.unsubscribeChan <- request}()
 
 
-	displayFields := []string{}
-	aggregators := []Aggregator{}
-
+	displayFields := []Expression{}
 	for _, fieldValue := range query.(map[string] interface{})["fields"].([]interface{}) {
-		aggregator := ParseAggregatorStatement(fieldValue.(string))
-		if aggregator != nil {
-			aggregators = append(aggregators, aggregator)
-			log.Printf("Parsed to aggregator: ", aggregator.String())
+		aggregator, err := Parse(fieldValue.(string))
+		if err != nil {
+			log.Printf("Couldn't parse expression %v: %v", fieldValue, err)
 		}else {
-			displayFields = append(displayFields, fieldValue.(string))
-			log.Printf("Field: ", fieldValue)
+			displayFields = append(displayFields, aggregator)
+			log.Printf("Parsed to aggregator: %v", aggregator.String())
 		}
 	}
 
-	filters := []Filter{}
+	filterPredicates := []Expression{}
 	for _, statement := range query.(map[string] interface{})["filters"].([]interface{}) {
 		log.Printf("Statement: ", statement)
-		filter, ok := ParseStatement(statement.(string))
-		if ok {
-			log.Printf("Parsed to filter: %v", filter)
-			filters = append(filters, filter)
+		expr, err := Parse(statement.(string))
+		if err != nil {
+			log.Printf("Couldn't parse statement \"%s\": %v", statement, err)	
+		}else {
+			filterPredicates = append(filterPredicates, expr)
 		}
 	}
 
@@ -119,17 +117,22 @@ func ServeStream(stream *JSONConn) {
 	for {
 		data := <-dataChan
 		
-		if !PassesAllFilters(data, filters) {
+		if passes, err := PassesAllFilters(data, filterPredicates); !passes {
+			if err != nil {
+				log.Printf("Got error evaluating predicates: %v", err)
+			}
 			continue
 		}
 		outputMap := map[string] interface{}{}
 		
 		for _, fieldValue := range displayFields {
-			outputMap[fieldValue], _ = GetDeep(fieldValue, data)
-		}
-
-		for _, aggregator := range aggregators {
-			outputMap[aggregator.String()] = aggregator.Push(data)
+			result, err := fieldValue.Evaluate(data)
+			if err == nil {
+				outputMap[fieldValue.String()] = result
+			} else {
+				outputMap[fieldValue.String()] = nil	
+				log.Printf("Got error '%v' evaluating field '%v'", err, fieldValue)
+			}
 		}
 
 		err := stream.WriteJSON(outputMap)
