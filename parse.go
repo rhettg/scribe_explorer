@@ -22,19 +22,19 @@ func ParseString(statement string) (fname string, args []string, err os.Error) {
 	// Scan over the arguments text, keeping track of the level of parentheses
 	// nesting. If we reach a comma at the top-level, end the currentWord
 	// and add it to the list of arguments.
-	parenLevel := 0 
+	parenLevel := 0
 	currentWord := []int{}
 	for _, c := range argsStr {
 		if c == '(' {
 			parenLevel++
-		}else if c == ')' {
+		} else if c == ')' {
 			parenLevel--
 		}
 
 		if parenLevel == 0 && c == ',' {
-			args = append(args, string(currentWord))	
+			args = append(args, string(currentWord))
 			currentWord = []int{}
-		}else {
+		} else {
 			currentWord = append(currentWord, c)
 		}
 	}
@@ -79,11 +79,11 @@ func ParseLiteral(literal string) (l *Literal, err os.Error) {
 	if i, err := strconv.Atoi(literal); err == nil {
 		l.value = i
 		return l, nil
-	}else if f, err := strconv.Atof64(literal); err == nil {
+	} else if f, err := strconv.Atof64(literal); err == nil {
 		l.value = f
 		return l, nil
-	} else if literal[0] == '"' && literal[len(literal) - 1] == '"' {
-		l.value = literal[1:len(literal) - 1]
+	} else if literal[0] == '"' && literal[len(literal)-1] == '"' {
+		l.value = literal[1 : len(literal)-1]
 		return l, nil
 	}
 	return nil, fmt.Errorf("Couldn't parse %s as a literal", literal)
@@ -120,16 +120,16 @@ func Parse(statement string) (expr Expression, err os.Error) {
 	}
 
 	switch fname {
-		case "RandomSample": 
-			expr = new(RandomSample)
-		case "GetDeep": 
-			expr = new(GetDeepExpression)
-		case "Subtract":
-			expr = new(Subtract)
-		case "RollingAverage":
-			expr = new(RollingAverage)
-		default:
-			return nil, fmt.Errorf("Unrecognized function name '%s'", fname)
+	case "RandomSample":
+		expr = new(RandomSample)
+	case "GetDeep":
+		expr = new(GetDeepExpression)
+	case "Subtract":
+		expr = new(Subtract)
+	case "RollingAverage":
+		expr = new(RollingAverage)
+	default:
+		return nil, fmt.Errorf("Unrecognized function name '%s'", fname)
 	}
 	err = expr.Setup(expressionArgs)
 	return

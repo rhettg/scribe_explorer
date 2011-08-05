@@ -8,15 +8,15 @@ import (
 
 type parseStringTest struct {
 	statement string
-	fname string
-	args []string
-	ok bool
+	fname     string
+	args      []string
+	ok        bool
 }
 
-var parseStringTests = []parseStringTest {
+var parseStringTests = []parseStringTest{
 	parseStringTest{"Foo(a", "", []string{}, false},
 	parseStringTest{"Foo(1,2)", "Foo", []string{"1", "2"}, true},
-	parseStringTest{"Subtract(a)", "Subtract", []string{"a",}, true},
+	parseStringTest{"Subtract(a)", "Subtract", []string{"a"}, true},
 	parseStringTest{"Subtract(a,b)", "Subtract", []string{"a", "b"}, true},
 	parseStringTest{"Subtract(a,b,c)", "Subtract", []string{"a", "b", "c"}, true},
 	parseStringTest{"Foo(Bar(abc),bc)", "Foo", []string{"Bar(abc)", "bc"}, true},
@@ -38,7 +38,7 @@ func TestParseFunction(t *testing.T) {
 		if fname != test.fname {
 			t.Errorf("For statement '%s', expected fname = %v, but was %v", test.statement, test.fname, aggregator)
 		}
-		
+
 		if ok, err := sliceEquals(args, test.args); !ok {
 			t.Errorf("For statement '%s', expected args = %v, but was %v: %s", test.statement, test.args, args, err)
 		}
@@ -47,7 +47,7 @@ func TestParseFunction(t *testing.T) {
 
 func sliceEquals(x, y []string) (ok bool, err os.Error) {
 	if len(x) != len(y) {
-		return false, fmt.Errorf("Error: len(x) %d != len(y) %d", len(x), len(y)) 
+		return false, fmt.Errorf("Error: len(x) %d != len(y) %d", len(x), len(y))
 	}
 	for i, _ := range x {
 		if x[i] != y[i] {

@@ -63,18 +63,18 @@ func (f *RandomSample) String() string {
  * XXX: Broken with the new parser. They need to be rewritten to the Expression interface.
  */
 type ComparisonFilter struct {
-	key string
+	key      string
 	operator func(a, b interface{}) bool
-	rhs interface{}
+	rhs      interface{}
 }
 
-var comparisonOperators = map[string] (func(a, b interface{}) bool) {
+var comparisonOperators = map[string](func(a, b interface{}) bool){
 	"==": func(a, b interface{}) bool { return a == b },
 	"!=": func(a, b interface{}) bool { return a != b },
 	">=": func(a, b interface{}) bool { return a.(float64) >= b.(float64) },
 	"<=": func(a, b interface{}) bool { return a.(float64) <= b.(float64) },
-	"<": func(a, b interface{}) bool { return a.(float64) < b.(float64) },
-	">": func(a, b interface{}) bool { return a.(float64) > b.(float64) },
+	"<":  func(a, b interface{}) bool { return a.(float64) < b.(float64) },
+	">":  func(a, b interface{}) bool { return a.(float64) > b.(float64) },
 }
 
 func NewComparisonFilter(query string) (f *ComparisonFilter, ok bool) {
@@ -99,27 +99,27 @@ func (f *ComparisonFilter) Parse(query string) (ok bool, applicable bool, msg st
 
 		// Strip off quotes if there's a matching pair (e.g. allows checks for == "")
 		if len(rhs) >= 2 && strings.HasPrefix(rhs, "\"") && strings.HasSuffix(rhs, "\"") {
-			rhs = rhs[1:len(rhs) - 1]
+			rhs = rhs[1 : len(rhs)-1]
 		}
-		
+
 		operator, operatorPresent := comparisonOperators[opStr]
 		if !operatorPresent {
-			ok = false	
+			ok = false
 			msg = "%v is not a valid operator."
 			return
-		}else {
+		} else {
 			f.operator = operator
 		}
 
 		rhsFloat, err := strconv.Atof64(rhs)
 		if err == nil {
 			f.rhs = rhsFloat
-		}else {
+		} else {
 			f.rhs = rhs
 		}
 
 		f.key = key
-	}else {
+	} else {
 		applicable = false
 		ok = false
 	}

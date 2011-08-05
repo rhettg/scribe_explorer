@@ -21,7 +21,7 @@ func NewGetDeepExpression(expr string) (gd *GetDeepExpression, err os.Error) {
 	gd = new(GetDeepExpression)
 	exprLiteral, err := ParseLiteral(strconv.Quote(expr))
 	if err != nil {
-		return nil, err	
+		return nil, err
 	}
 	err = gd.Setup([]Expression{exprLiteral})
 	return
@@ -37,7 +37,7 @@ func (gd *GetDeepExpression) Setup(args []Expression) (err os.Error) {
 
 func (gd *GetDeepExpression) Evaluate(data JSONData) (result interface{}, err os.Error) {
 	key, err := gd.expr.Evaluate(data)
-	if err != nil{
+	if err != nil {
 		return nil, err
 	}
 	if key, ok := key.(string); key == "" || !ok {
@@ -98,10 +98,10 @@ func (s *Subtract) String() string {
  * RollingAverage(x float64, windowSize int) -> float64
  */
 type RollingAverage struct {
-	expr Expression
+	expr       Expression
 	windowSize Expression
-	window list.List
-	sum float64
+	window     list.List
+	sum        float64
 }
 
 func (ra *RollingAverage) String() string {
@@ -114,7 +114,7 @@ func (ra *RollingAverage) Setup(args []Expression) (err os.Error) {
 	}
 	ra.expr = args[0]
 	ra.windowSize = args[1]
-	
+
 	return nil
 }
 
@@ -139,7 +139,7 @@ func (ra *RollingAverage) Evaluate(data JSONData) (result interface{}, err os.Er
 
 func (ra *RollingAverage) Push(val float64, windowSize int) float64 {
 	ra.window.PushFront(val)
-	ra.sum += val 
+	ra.sum += val
 	if ra.window.Len() > windowSize {
 		lastElem := ra.window.Back()
 		ra.sum -= lastElem.Value.(float64)
