@@ -39,11 +39,13 @@ func CreateTestDataStream(fileName string) io.Reader {
 func ServeWS(socket *websocket.Conn) {
 	jsonStream := NewJSONConn(socket)
 
+/*
 	defer func() {
         if err := recover(); err != nil {
             log.Println("ServeWS failed:", err)
         }
     }()
+	*/
 
 	ServeStream(jsonStream)
 }

@@ -127,8 +127,11 @@ func Parse(statement string) (expr Expression, err os.Error) {
 	case fname == "Subtract" || fname == "Add" || fname == "Divide" || fname == "Multiply":
 		expr = new(ArithmeticOperator)
 		log.Printf("creating an arithmetic operator", fname)
-	case fname == "RollingAverage":
-		expr = new(RollingAverage)
+	case fname == "RollingWindow":
+		expr = new(RollingWindow)
+	case fname == "WindowAve":
+		expr = new(WindowAve)
+
 	default:
 		return nil, fmt.Errorf("Unrecognized function name '%s'", fname)
 	}
