@@ -89,7 +89,7 @@ func NewComparisonFilter(query string) (f *ComparisonFilter, ok bool) {
 }
 
 func (f *ComparisonFilter) Parse(query string) (ok bool, applicable bool, msg string) {
-	fields := strings.Split(query, " ", -1)
+	fields := strings.Split(query, " ")
 	applicable = true
 	ok = true
 	if len(fields) == 3 {

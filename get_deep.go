@@ -9,7 +9,7 @@ import (
 type JSONData interface{}
 
 func GetDeep(key string, data JSONData) (dataStep interface{}, ok bool) {
-	allKeys := strings.Split(key, ".", -1)
+	allKeys := strings.Split(key, ".")
 	dataStep = data
 	for _, subKey := range allKeys {
 		// Check we have something sane we can use
