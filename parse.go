@@ -129,6 +129,8 @@ func Parse(statement string) (expr Expression, err os.Error) {
 		log.Printf("creating an arithmetic operator", fname)
 	case fname == "RollingWindow":
 		expr = new(RollingWindow)
+	case fname == "TimedWindow":
+		expr = new(TimedWindow)
 	case fname == "WindowAve":
 		expr = new(WindowAve)
 
