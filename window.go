@@ -27,10 +27,10 @@ type SingleWindowListenerStruct struct {
 }
 
 type RollingWindow struct {
-	expr Expression
+	expr       Expression
 	windowList list.List
 	windowSize Expression
-	listener WindowListener
+	listener   WindowListener
 }
 
 var _ Window = new(RollingWindow)
@@ -99,14 +99,14 @@ func (rw *RollingWindow) Push(element interface{}, wSize int) (err os.Error) {
 }
 
 type TimedWindow struct {
-	expr Expression
-	windowList list.List
+	expr         Expression
+	windowList   list.List
 	windowLength Expression
-	listener WindowListener
+	listener     WindowListener
 }
 
 type timedWindowElement struct {
-	value interface{}
+	value     interface{}
 	timestamp int64
 }
 
@@ -186,7 +186,7 @@ func (tw *TimedWindow) Push(element interface{}, wSize int) (err os.Error) {
 
 type WindowAve struct {
 	window Window
-	sum float64
+	sum    float64
 }
 
 var _ WindowListener = new(WindowAve)
@@ -195,7 +195,7 @@ func (wa *WindowAve) Setup(fname string, args []Expression) (err os.Error) {
 	if len(args) != 1 {
 		return fmt.Errorf("WindowAve expects a single Window argument.")
 	}
-	window, ok := args[0].(Window);
+	window, ok := args[0].(Window)
 	if !ok {
 		return fmt.Errorf("WindowAve expects a single Window argument.")
 	}
@@ -232,4 +232,3 @@ func (wa *WindowAve) Pop(val interface{}) (err os.Error) {
 func (wa *WindowAve) String() string {
 	return fmt.Sprintf("WindowAve(%v)", wa.window)
 }
-
