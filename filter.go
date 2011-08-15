@@ -57,6 +57,46 @@ func (f *RandomSample) Evaluate(data JSONData) (result interface{}, err os.Error
 func (f *RandomSample) String() string {
 	return fmt.Sprintf("RandomSample(%v)", f.rate)
 }
+
+
+/*
+ * EveryNth(int)
+ *
+ * Returns a boolean true every nth time it's evaluated.
+ */
+type EveryNth struct {
+	rate Expression
+	counter int
+}
+
+func (f *EveryNth) Setup(fname string, args []Expression) (err os.Error) {
+	if len(args) != 1 {
+		return fmt.Errorf("RandomSample takes a single argument, an int between 0 and 1")
+	}
+	f.rate = args[0]
+	return
+}
+
+func (f *EveryNth) Evaluate(data JSONData) (result interface{}, err os.Error) {
+	rate, err := f.rate.Evaluate(data)
+	if err != nil {
+		return false, err
+	}
+	if rate, ok := rate.(int); !ok {
+		return false, fmt.Errorf("RandomSample takes a single argument, a positive integer. Got %v", rate)
+	}
+	f.counter++
+	if f.counter >= rate.(int) {
+		f.counter = 0
+		return true, nil
+	}
+	return false, nil
+}
+
+func (f *EveryNth) String() string {
+	return fmt.Sprintf("EveryNth(%v)", f.rate)
+}
+
 /*
  * Comparison Filter
  * 
