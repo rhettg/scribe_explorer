@@ -65,7 +65,7 @@ func (f *RandomSample) String() string {
  * Returns a boolean true every nth time it's evaluated.
  */
 type EveryNth struct {
-	rate Expression
+	rate    Expression
 	counter int
 }
 
