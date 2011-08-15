@@ -122,6 +122,8 @@ func Parse(statement string) (expr Expression, err os.Error) {
 	switch {
 	case fname == "RandomSample":
 		expr = new(RandomSample)
+	case fname == "EveryNth":
+		expr = new(EveryNth)
 	case fname == "GetDeep":
 		expr = new(GetDeepExpression)
 	case fname == "Subtract" || fname == "Add" || fname == "Divide" || fname == "Multiply":
