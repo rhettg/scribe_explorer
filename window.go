@@ -4,7 +4,6 @@ import (
 	"os"
 	"fmt"
 	"container/list"
-	"log"
 	"time"
 )
 
@@ -72,7 +71,6 @@ func (rw *RollingWindow) Evaluate(data JSONData) (result interface{}, err os.Err
 		return nil, fmt.Errorf("RollingWindow expects an int window size. Got a %T, %v", wSize, wSize)
 	}
 	if value != nil {
-		log.Printf("pushing %v, wSize %v", value, wSize.(int))
 		err = rw.Push(value, wSize.(int))
 	}
 	return rw.windowList.Front(), err
@@ -86,9 +84,7 @@ func (rw *RollingWindow) Push(element interface{}, wSize int) (err os.Error) {
 	if err != nil {
 		return
 	}
-	log.Printf("wSize %v", wSize)
 	for rw.windowList.Len() > wSize {
-		log.Printf("trimming window to %v", wSize)
 		lastElem := rw.windowList.Back()
 		rw.windowList.Remove(lastElem)
 		if rw.listener != nil {
@@ -213,7 +209,6 @@ func (wa *WindowAve) Evaluate(data JSONData) (result interface{}, err os.Error) 
 }
 
 func (wa *WindowAve) Push(val interface{}) (err os.Error) {
-	log.Printf("Pushing %v on ave", val)
 	if val, ok := val.(float64); !ok {
 		return fmt.Errorf("Window expected a float64, got %v (%T)", val, val)
 	}
