@@ -9,11 +9,13 @@ import (
 )
 
 func ParseString(statement string) (fname string, args []string, err os.Error) {
-	expressionReString := `[A-Z|a-z|0-9]+\((.+)\)` //|([A-Z|a-z|0-9|\.]+)`
+	// Match a word followed by a pair of parens with anything in between them.
+	expressionReString := `[A-Z|a-z|0-9]+\((.+)\)`
 	expressionRe, err := regexp.Compile(expressionReString)
 	if !expressionRe.MatchString(statement) {
 		return "", []string{}, fmt.Errorf("\"%v\" is not an Expression", statement)
 	}
+	// Now pull out the functiona name.
 	fnameRe, err := regexp.Compile(`([A-Z|a-z|0-9]+)\((.+)\)$`)
 	fnameMatches := fnameRe.FindStringSubmatch(statement)
 	fname = fnameMatches[1]
@@ -27,9 +29,17 @@ func ParseString(statement string) (fname string, args []string, err os.Error) {
 	currentWord := []int{}
 	for _, c := range argsStr {
 		switch c {
-			case '(': parenLevel++; continue 
-			case ')': parenLevel--; continue
-			case '"': quoted = !quoted; continue
+		case '(':
+			parenLevel++
+			continue
+		case ')':
+			parenLevel--
+			continue
+		// We keep track of whether we're inside of quotes, so
+		// we know whether to ignore whitespace. The quotes are
+		// later stripped off in ParseLiteral().
+		case '"', '`', '\'':
+			quoted = !quoted
 		}
 
 		if c == ' ' && !quoted {
@@ -90,8 +100,8 @@ func ParseLiteral(literal string) (l *Literal, err os.Error) {
 	} else if f, err := strconv.Atof64(literal); err == nil {
 		l.value = f
 		return l, nil
-	} else if literal[0] == '"' && literal[len(literal)-1] == '"' {
-		l.value = literal[1 : len(literal)-1]
+	} else if unquoted, err := strconv.Unquote(literal); err == nil {
+		l.value = unquoted
 		return l, nil
 	}
 	return nil, fmt.Errorf("Couldn't parse %s as a literal", literal)
@@ -136,13 +146,14 @@ func Parse(statement string) (expr Expression, err os.Error) {
 		expr = new(GetDeepExpression)
 	case fname == "Subtract" || fname == "Add" || fname == "Divide" || fname == "Multiply":
 		expr = new(ArithmeticOperator)
-		log.Printf("creating an arithmetic operator", fname)
 	case fname == "RollingWindow":
 		expr = new(RollingWindow)
 	case fname == "TimedWindow":
 		expr = new(TimedWindow)
 	case fname == "WindowAve":
 		expr = new(WindowAve)
+	case fname == "As":
+		expr = new(AsClause)
 
 	default:
 		return nil, fmt.Errorf("Unrecognized function name '%s'", fname)

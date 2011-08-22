@@ -50,6 +50,40 @@ func (gd *GetDeepExpression) String() string {
 	return gd.expr.String()
 }
 
+/*
+ * AsClause(expression, string) -> expression
+ *
+ * Passes thru the result of the expression, but overrides String() to return the second argument.
+ */
+type AsClause struct {
+	expr        Expression
+	alias       Expression
+	aliasResult string
+}
+
+func (a *AsClause) Setup(fname string, args []Expression) (err os.Error) {
+	if len(args) != 2 {
+		return fmt.Errorf("As expects an Expression and a string")
+	}
+	a.expr = args[0]
+	a.alias = args[1]
+	return nil
+}
+
+
+func (e *AsClause) Evaluate(data JSONData) (result interface{}, err os.Error) {
+	// Store the result of evaluating the alias, so it can be used by String() 
+	// This may prove to be unwise, but errors evaluating the alias are ignored,
+	// 'cause there's not much we can do about them.
+	aliasResult, _ := e.alias.Evaluate(data)
+	e.aliasResult, _ = aliasResult.(string)
+
+	return e.expr.Evaluate(data)
+}
+
+func (e *AsClause) String() (result string) {
+	return e.aliasResult
+}
 
 /*
  * Subtract(expr1, expr2 float64) -> float64
@@ -104,4 +138,3 @@ func (o *ArithmeticOperator) Evaluate(data JSONData) (result interface{}, err os
 func (o *ArithmeticOperator) String() string {
 	return fmt.Sprintf("%v(%v,%v)", o.fname, o.expr1, o.expr2)
 }
-
