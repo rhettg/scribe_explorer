@@ -3,7 +3,6 @@ package main
 import (
 	"strconv"
 	"os"
-	"container/list"
 	"fmt"
 )
 

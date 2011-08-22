@@ -247,17 +247,6 @@ uri
       console.log(query);
       var rangerStream = this;
       this.query = query;
-      this.output = document.getElementById("output");
-      this.output.innerHTML = "<table id=\'outputTable'\></table>";
-
-      this.keys = query.fields;
-
-      $('#outputTable').append("<thead><tr id='outputTableHeader'></th></tr></thead>");
-      for (var ndx in this.keys) {
-        $('#outputTableHeader').append("<th>" + this.keys[ndx] + "</th>");  
-      }      
-
-      $('#outputTable').append("<tbody id='outputTableBody'></tbody>");
       
       this.websocket = new WebSocket("ws://localhost:"+8080+"/ws");
       this.websocket.onopen = function(evt) { rangerStream.onOpen(evt) };
@@ -266,8 +255,22 @@ uri
       this.websocket.onerror = function(evt) { rangerStream.onError(evt) };
       
       this.rowLimit = 30;
-
+		this.keys = [];
   };
+
+  RW.RangerStream.prototype.setupTable = function(keys) {
+      this.output = document.getElementById("output");
+      this.output.innerHTML = "<table id=\'outputTable'\></table>";
+
+      this.keys = keys
+
+      $('#outputTable').append("<thead><tr id='outputTableHeader'></th></tr></thead>");
+      for (var ndx in keys) {
+        $('#outputTableHeader').append("<th>" + keys[ndx] + "</th>");  
+      }      
+
+      $('#outputTable').append("<tbody id='outputTableBody'></tbody>");
+  }
 
   RW.RangerStream.prototype.stop = function() {
       this.websocket.close();
@@ -282,16 +285,33 @@ uri
   RW.RangerStream.prototype.onClose = function(evt) {
       console.log('now closed');
   };
-
+  RW.RangerStream.prototype.keysChanged = function(newKeys) {
+		if (this.keys.length != newKeys.length) return true;
+		for (var i = 0; i < newKeys.length; i++) {
+			if (this.keys[i] !== newKeys[i]) return true;
+		}
+		return false;
+	}
 
   RW.RangerStream.prototype.onMessage = function(evt) {
       var rangerStream = this;
       console.log("received: " + evt.data);
-      var obj = $.parseJSON(evt.data);
+      var pairs = $.parseJSON(evt.data);
       
+	  var orderedKeys = []
+	  for (var ndx in pairs) {
+	  	key = pairs[ndx][0];
+	  	orderedKeys[ndx] = key;
+	  }
+	  
+	  if (this.keysChanged(orderedKeys)) {
+		  console.log("resetting table for keys " + orderedKeys);
+		  this.setupTable(orderedKeys)
+	  }
+
       var content = "<tr>"
-      for (var ndx in this.keys) {
-        var val = obj[this.keys[ndx]];
+      for (var ndx in pairs) {
+	  	var val = pairs[ndx][1]
         content += "<td>" + val + "</td>"
       }
       content += "</tr>"

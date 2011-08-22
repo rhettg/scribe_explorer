@@ -23,15 +23,20 @@ func ParseString(statement string) (fname string, args []string, err os.Error) {
 	// nesting. If we reach a comma at the top-level, end the currentWord
 	// and add it to the list of arguments.
 	parenLevel := 0
+	quoted := false
 	currentWord := []int{}
 	for _, c := range argsStr {
-		if c == '(' {
-			parenLevel++
-		} else if c == ')' {
-			parenLevel--
+		switch c {
+			case '(': parenLevel++; continue 
+			case ')': parenLevel--; continue
+			case '"': quoted = !quoted; continue
 		}
 
-		if parenLevel == 0 && c == ',' {
+		if c == ' ' && !quoted {
+			continue
+		}
+
+		if parenLevel == 0 && !quoted && c == ',' {
 			args = append(args, string(currentWord))
 			currentWord = []int{}
 		} else {
@@ -43,6 +48,9 @@ func ParseString(statement string) (fname string, args []string, err os.Error) {
 
 	if parenLevel != 0 {
 		return "", []string{}, fmt.Errorf("Unbalanced parentheses in \"%v\"", argsStr)
+	}
+	if quoted {
+		return "", []string{}, fmt.Errorf("Unbalanced quote marks in \"%v\"", argsStr)
 	}
 	return fname, args, nil
 }

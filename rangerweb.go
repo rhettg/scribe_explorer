@@ -125,19 +125,18 @@ func ServeStream(stream *JSONConn) {
 			}
 			continue
 		}
-		outputMap := map[string] interface{}{}
+		outputPairs :=  make([]interface{}, 0)
 		
 		for _, fieldValue := range displayFields {
 			result, err := fieldValue.Evaluate(data)
-			if err == nil {
-				outputMap[fieldValue.String()] = result
-			} else {
-				outputMap[fieldValue.String()] = nil	
+			if err != nil {
 				log.Printf("Got error '%v' evaluating field '%v'", err, fieldValue)
 			}
+			name := fieldValue.String()
+			outputPairs = append(outputPairs, []interface{}{name, result})
 		}
 
-		err := stream.WriteJSON(outputMap)
+		err := stream.WriteJSON(outputPairs)
 		if err != nil {
 			log.Printf("Failed to write", err)
 			return
