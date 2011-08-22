@@ -1,7 +1,7 @@
 <html>
 <meta charset="utf-8" />
 <head>
-<title>WebSocket Test</title>
+<title>Scribe Explorer</title>
 
 <style type="text/css">
 html, body, div, span, applet, object, iframe,
@@ -285,30 +285,27 @@ uri
   RW.RangerStream.prototype.onClose = function(evt) {
       console.log('now closed');
   };
-  RW.RangerStream.prototype.keysChanged = function(newKeys) {
-		if (this.keys.length != newKeys.length) return true;
-		for (var i = 0; i < newKeys.length; i++) {
-			if (this.keys[i] !== newKeys[i]) return true;
-		}
-		return false;
-	}
+
 
   RW.RangerStream.prototype.onMessage = function(evt) {
       var rangerStream = this;
       console.log("received: " + evt.data);
       var pairs = $.parseJSON(evt.data);
       
+	  // Grab all of the field name keys (i.e. column headers)
 	  var orderedKeys = []
 	  for (var ndx in pairs) {
 	  	key = pairs[ndx][0];
 	  	orderedKeys[ndx] = key;
 	  }
 	  
+	  // Now redraw the table only if the keys have changed
 	  if (this.keysChanged(orderedKeys)) {
 		  console.log("resetting table for keys " + orderedKeys);
 		  this.setupTable(orderedKeys)
 	  }
 
+	  // Add a row
       var content = "<tr>"
       for (var ndx in pairs) {
 	  	var val = pairs[ndx][1]
@@ -317,6 +314,9 @@ uri
       content += "</tr>"
       
       $('#outputTableBody').prepend(content)
+
+	  // If we're below the rowLimit, lower it. Otherwise pop
+	  // the last row off the table.
       if (this.rowLimit > 0) {
         this.rowLimit -= 1;
       }
@@ -327,6 +327,16 @@ uri
 
   RW.RangerStream.prototype.onError = function(evt) {
       console.log("error: " + evt);
+  }
+
+  // Returns true if newKeys are different than this.keys,
+  // so the table needs to be redrawn.
+  RW.RangerStream.prototype.keysChanged = function(newKeys) {
+      if (this.keys.length != newKeys.length) return true;
+	    for (var i = 0; i < newKeys.length; i++) {
+	      if (this.keys[i] !== newKeys[i]) return true;
+        }
+      return false;
   }
 
   $(document).ready(RW.init);
