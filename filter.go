@@ -17,7 +17,7 @@ func PassesAllFilters(line JSONData, filters []Expression) (result bool, err os.
 		}
 		passes, ok := passes.(bool)
 		if !ok {
-			return false, fmt.Errorf("Expected a boolean, got %v", passes)
+			return false, fmt.Errorf("Expected a boolean for %T, got %T", filter, passes)
 		}
 		if !passes.(bool) {
 			return false, nil
