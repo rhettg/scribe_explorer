@@ -2,6 +2,7 @@ package main
 import (
 	"net"
 	"bufio"
+	"io"
 	"json"
 	"log"
 	"os"
@@ -16,8 +17,9 @@ type DataStream struct {
 	name string
 	connectString string
 	
-	ioStream *bufio.Reader
-
+	rawStream io.ReadWriteCloser  // Raw io stream of data
+	ioStream *bufio.Reader  // Our buffered view of our data stream
+	
 	subscribeChan chan *SubscribeRequest
 	unsubscribeChan chan *SubscribeRequest
 	
@@ -33,10 +35,7 @@ func NewDataStream(name string, connectString string) (stream *DataStream) {
 	stream.unsubscribeChan = make(chan *SubscribeRequest)
 	stream.allChannels = make([](chan JSONData), 0, 64)
 	
-	stream.createIOStream()
-
 	go stream.acceptChannels()
-	go stream.streamData()
 	return
 }
 
@@ -65,6 +64,12 @@ func (stream *DataStream) subscribe(request *SubscribeRequest) {
 		request.id = (len(stream.allChannels) - 1)
 	}
 	log.Printf("Adding new channel %d to data stream", request.id, stream.name)
+
+	// If we are not yet streaming data, we should be
+	if stream.ioStream == nil {
+		stream.createIOStream()
+		go stream.streamData()
+	}
 }
 
 func (stream *DataStream) unsubscribe(request *SubscribeRequest) {
@@ -98,6 +103,7 @@ func (stream *DataStream) streamData() {
 		}
 
 		// Now deliver this fine chunk of ranger data to each of our listeners
+		sent := false
 		for ndx, dataChannel := range stream.allChannels {
 			if dataChannel != nil {
 				// We don't want to be blocking waiting on the channel, if it can't keep up we'll drop the data.
@@ -106,10 +112,19 @@ func (stream *DataStream) streamData() {
 					default:
 						log.Println("Dropping data to channel", ndx)
 				}
+				sent = true
 			}
 		}
+		/* There are no dataChannel's left open, we can close the stream */
+		if !sent {
+			log.Printf("Closing data stream for %s", stream.name)
+			stream.rawStream.Close()
+			stream.rawStream = nil;
+			stream.ioStream = nil;
+			break
+		}
 	}
-	log.Printf("All done with data stream")
+	log.Printf("All done with data stream %s", stream.name)
 }
 
 
@@ -124,6 +139,7 @@ func (stream *DataStream) createIOStream() {
 		log.Fatal("Failed to send cmd", err)
 	}
 
+	stream.rawStream = conn
 	stream.ioStream, err = bufio.NewReaderSize(conn, 1024*32)
 	if err != nil {
 		log.Fatal("Failed to create reader", err)
