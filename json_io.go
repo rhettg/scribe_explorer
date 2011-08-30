@@ -54,7 +54,7 @@ func (jsonConn *JSONConn) WriteJSON(data JSONData) (err os.Error) {
 	
 	_, err = jsonConn.bufConn.WriteString(string(outputBytes) + "\n");
 	if err != nil {
-		return
+		return err
 	}
 	
 	// _, err := jsonConn.bufConn.WriteString("\n");
@@ -63,5 +63,5 @@ func (jsonConn *JSONConn) WriteJSON(data JSONData) (err os.Error) {
 	// }
 
 	err = jsonConn.bufConn.Flush()
-	return
+	return err
 }
