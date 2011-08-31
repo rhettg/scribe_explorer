@@ -117,7 +117,9 @@ func ServeStream(stream *JSONConn) {
 
 
 	for {
+		log.Printf("Channel %d Waiting to receive", request.id)
 		data := <-dataChan
+		log.Printf("Channel %d received data", request.id)
 		
 		if passes, err := PassesAllFilters(data, filterPredicates); !passes {
 			if err != nil {

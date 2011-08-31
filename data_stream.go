@@ -22,6 +22,7 @@ type DataStream struct {
 	
 	subscribeChan chan *SubscribeRequest
 	unsubscribeChan chan *SubscribeRequest
+	nextChan chan *JSONData
 	
 	allChannels [](chan JSONData)
 }
@@ -47,6 +48,16 @@ func (stream *DataStream) acceptChannels() {
 				stream.subscribe(channelRequest)
 			case channelRequest := <-stream.unsubscribeChan:
 				stream.unsubscribe(channelRequest)
+			case nextChan ->stream.nextChan:
+				for {
+					chanNdx += 1
+					if chanNdx >= len(stream.allChannels) - 1 {
+						chanNdx = 0
+					}
+					// TODO: Interate through
+				}
+	}
+
 		}
 	}
 }
@@ -115,7 +126,10 @@ func (stream *DataStream) streamData() {
 				sent = true
 			}
 		}
-		/* There are no dataChannel's left open, we can close the stream */
+		/* There are no dataChannel's left open, we can close the stream 
+		   TODO: I'm suspicious of race conditions here. Closing the stream should probably be handled by the 
+		          acceptChannel goroutine.
+		*/
 		if !sent {
 			log.Printf("Closing data stream for %s", stream.name)
 			stream.rawStream.Close()
