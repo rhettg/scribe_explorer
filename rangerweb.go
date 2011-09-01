@@ -88,9 +88,9 @@ func ServeStream(stream *JSONConn) {
 	dataChan := make(chan JSONData, 16)
 	request := new(SubscribeRequest)
 	request.dataChan = dataChan
-	scribeStream.subscribeChan <- request
+	scribeStream.SubscribeChan <- request
 	
-	defer func() {scribeStream.unsubscribeChan <- request}()
+	defer func() {scribeStream.UnsubscribeChan <- request}()
 
 
 	displayFields := []Expression{}

@@ -19,12 +19,14 @@ type DataStream struct {
 	
 	rawStream io.ReadWriteCloser  // Raw io stream of data
 	ioStream *bufio.Reader  // Our buffered view of our data stream
-	
-	subscribeChan chan *SubscribeRequest
-	unsubscribeChan chan *SubscribeRequest
-	nextChan chan *JSONData
-	
+
 	allChannels [](chan JSONData)
+	nextChanNdx int
+	
+	SubscribeChan chan *SubscribeRequest
+	UnsubscribeChan chan *SubscribeRequest
+	ReceiveNextChan chan (chan JSONData)  // Channel to pull channels out of for iterating through our allChannel set
+	
 }
 
 func NewDataStream(name string, connectString string) (stream *DataStream) {
@@ -32,32 +34,28 @@ func NewDataStream(name string, connectString string) (stream *DataStream) {
 	stream.name = name
 	stream.connectString = connectString
 
-	stream.subscribeChan = make(chan *SubscribeRequest)
-	stream.unsubscribeChan = make(chan *SubscribeRequest)
 	stream.allChannels = make([](chan JSONData), 0, 64)
+
+	stream.SubscribeChan = make(chan *SubscribeRequest)
+	stream.UnsubscribeChan = make(chan *SubscribeRequest)
+	stream.ReceiveNextChan = make(chan (chan JSONData))
 	
 	go stream.acceptChannels()
 	return
 }
 
 func (stream *DataStream) acceptChannels() {
-	for {
-		
-		select {
-			case channelRequest := <-stream.subscribeChan:
-				stream.subscribe(channelRequest)
-			case channelRequest := <-stream.unsubscribeChan:
-				stream.unsubscribe(channelRequest)
-			case nextChan ->stream.nextChan:
-				for {
-					chanNdx += 1
-					if chanNdx >= len(stream.allChannels) - 1 {
-						chanNdx = 0
-					}
-					// TODO: Interate through
-				}
-	}
+	
+	nextChan := stream.findNextChan()
 
+	for {
+		select {
+			case channelRequest := <-stream.SubscribeChan:
+				stream.subscribe(channelRequest)
+			case channelRequest := <-stream.UnsubscribeChan:
+				stream.unsubscribe(channelRequest)
+			case stream.ReceiveNextChan<- nextChan:
+				nextChan = stream.findNextChan()
 		}
 	}
 }
@@ -88,7 +86,29 @@ func (stream *DataStream) unsubscribe(request *SubscribeRequest) {
 	stream.allChannels[request.id] = nil
 }
 
+/*
+  Find next channel for our stream processors
+
+  Updates the stream.nextChanNdx attribute, which is an index into allChannels
+  */
+func (stream *DataStream) findNextChan() chan JSONData {
+	for stream.nextChanNdx++; stream.nextChanNdx < len(stream.allChannels); stream.nextChanNdx++ {
+		if stream.allChannels[stream.nextChanNdx] != nil {
+			return stream.allChannels[stream.nextChanNdx]
+		}
+	}
+
+	stream.nextChanNdx = -1
+	return nil
+}
+
 func (stream *DataStream) streamData() {
+	// The first receive channel is always nil
+	dataChannel := <-stream.ReceiveNextChan
+	if dataChannel != nil {
+		log.Fatal("whaaaa?")
+	}
+	
 	for {
 		line, isPrefix, err := stream.ioStream.ReadLine()
 		if err != nil {
@@ -115,17 +135,20 @@ func (stream *DataStream) streamData() {
 
 		// Now deliver this fine chunk of ranger data to each of our listeners
 		sent := false
-		for ndx, dataChannel := range stream.allChannels {
-			if dataChannel != nil {
-				// We don't want to be blocking waiting on the channel, if it can't keep up we'll drop the data.
-				select {
-					case dataChannel <- data:
-					default:
-						log.Println("Dropping data to channel", ndx)
-				}
-				sent = true
+		for {
+			dataChannel = <-stream.ReceiveNextChan	
+			if dataChannel == nil {
+				break
 			}
-		}
+
+			select {
+				case dataChannel <- data:
+					sent = true
+				default:
+					log.Println("Dropping data to channel")
+			}
+		}		
+
 		/* There are no dataChannel's left open, we can close the stream 
 		   TODO: I'm suspicious of race conditions here. Closing the stream should probably be handled by the 
 		          acceptChannel goroutine.
