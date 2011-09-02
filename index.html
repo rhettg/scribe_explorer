@@ -172,7 +172,9 @@ uri
 
         <label for="queryFilters">Filters</label>
 
-        <textarea id="queryFilters"></textarea>
+        <textarea id="queryFilters">
+RandomSample(0.25)
+</textarea>
 
         <input type="button" value="Update Query" id="queryButton" name="queryButton" class="button" />
         <input type="button" value="Stop" id="stopButton" class="button" />
@@ -289,7 +291,7 @@ uri
 
   RW.RangerStream.prototype.onMessage = function(evt) {
       var rangerStream = this;
-      console.log("received: " + evt.data);
+      //console.log("received: " + evt.data);
       var pairs = $.parseJSON(evt.data);
       
 	  // Grab all of the field name keys (i.e. column headers)
@@ -308,7 +310,11 @@ uri
 	  // Add a row
       var content = "<tr>"
       for (var ndx in pairs) {
-	  	var val = pairs[ndx][1]
+	  	  if (typeof pairs[ndx][1] == "string") {
+          var val = pairs[ndx][1]  
+        } else {
+          var val = JSON.stringify(pairs[ndx][1])
+        }
         content += "<td>" + val + "</td>"
       }
       content += "</tr>"
