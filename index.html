@@ -316,7 +316,7 @@ RandomSample(0.25)
       for (var ndx in pairs) {
         var val = ""
         if (pairs[ndx][0] == "unique_request_id") {
-          val = "<a href=\"/ranger/" + pairs[ndx][1] + "\">" + pairs[ndx][1] + "</a>"    
+          val = "<a href=\"/lookup?q=" + pairs[ndx][1] + "\">" + pairs[ndx][1] + "</a>"    
         }
 	  	  else if (typeof pairs[ndx][1] == "string") {
           val = pairs[ndx][1]  

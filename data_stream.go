@@ -108,8 +108,6 @@ func (stream *DataStream) cacheData(data *JSONData) {
 	if stream.dataCacheIndexes.Len() >= 64 {
 		stream.dataCacheIndexes.Remove(stream.dataCacheIndexes.Front())
 	}
-
-	log.Printf("Data cache now contains %d elements", stream.dataCacheIndexes.Len())
 }
 
 func (stream *DataStream) LookupData(key string) *JSONData {

@@ -10,6 +10,8 @@ import (
 	"log"
 	"net"
 	"flag"
+	"json"
+	"strings"
 )
 
 type LineReader interface {
@@ -159,6 +161,34 @@ func ServePage(writer http.ResponseWriter, request *http.Request) {
 
 }
 
+func ServeDataItemPage(writer http.ResponseWriter, request *http.Request) {
+	log.Println("Starting /ranger")
+
+	stream := StreamByName("ranger")
+
+	log.Printf("received %s", request.FormValue("q"))
+	data := stream.LookupData(request.FormValue("q"))
+	if data == nil {
+		log.Printf("Failed to find %s", request.FormValue("q"))
+		writer.WriteHeader(http.StatusNotFound)
+		return
+	}
+	
+	outputBytes, err := json.Marshal(data)
+	if err != nil {
+		log.Printf("Failed to format data")
+	}
+	if strings.Contains(request.Header.Get("Accept"), "application/json") {
+		writer.Header().Set("Content-Type", "applicaton/json")
+		writer.Write(outputBytes)
+	} else {
+
+		writer.Header().Set("Content-Type", "text/plain")	
+		// TODO: Prettyprint
+		writer.Write(outputBytes)
+	}
+}
+
 func listenTCPClients() {
 	
 	ipAddr, err := net.ResolveIPAddr("tcp4", "127.0.0.1")
@@ -205,6 +235,7 @@ func main() {
 	go listenTCPClients()
 
 	http.Handle("/", http.HandlerFunc(ServePage))
+	http.Handle("/lookup", http.HandlerFunc(ServeDataItemPage))
 	http.Handle("/ws", websocket.Handler(ServeWS))
 
 	err := http.ListenAndServe(":8080", nil)
