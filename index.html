@@ -150,6 +150,10 @@ td {
     overflow: hidden;
 }
 
+a {
+  color: #586e75;
+}
+ 
 
 </style>
 </head>
@@ -310,10 +314,14 @@ RandomSample(0.25)
 	  // Add a row
       var content = "<tr>"
       for (var ndx in pairs) {
-	  	  if (typeof pairs[ndx][1] == "string") {
-          var val = pairs[ndx][1]  
+        var val = ""
+        if (pairs[ndx][0] == "unique_request_id") {
+          val = "<a href=\"/ranger/" + pairs[ndx][1] + "\">" + pairs[ndx][1] + "</a>"    
+        }
+	  	  else if (typeof pairs[ndx][1] == "string") {
+          val = pairs[ndx][1]  
         } else {
-          var val = JSON.stringify(pairs[ndx][1])
+          val = JSON.stringify(pairs[ndx][1])
         }
         content += "<td>" + val + "</td>"
       }

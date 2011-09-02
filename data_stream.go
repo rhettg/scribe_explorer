@@ -2,6 +2,7 @@ package main
 import (
 	"net"
 	"bufio"
+	"container/list"
 	"io"
 	"json"
 	"log"
@@ -17,6 +18,11 @@ type DataStream struct {
 	name string
 	connectString string
 	
+	// We support keeping a cache of recent data items for later inspection. Obviously we want to cap the size on this.
+	dataCacheKey string
+	dataCacheIndexes list.List
+	dataCache map [string] *JSONData
+
 	rawStream io.ReadWriteCloser  // Raw io stream of data
 	ioStream *bufio.Reader  // Our buffered view of our data stream
 	
@@ -31,10 +37,16 @@ func NewDataStream(name string, connectString string) (stream *DataStream) {
 	stream.name = name
 	stream.connectString = connectString
 
+	// TODO: Make this dynamic
+	stream.dataCacheKey = "unique_request_id"
 	stream.subscribeChan = make(chan *SubscribeRequest)
 	stream.unsubscribeChan = make(chan *SubscribeRequest)
 	stream.allChannels = make([](chan JSONData), 0, 64)
+
+	stream.dataCache = make(map [string] *JSONData, 64)
 	
+	stream.dataCacheIndexes.Init()
+
 	go stream.acceptChannels()
 	return
 }
@@ -78,6 +90,37 @@ func (stream *DataStream) unsubscribe(request *SubscribeRequest) {
 	stream.allChannels[request.id] = nil
 }
 
+func (stream *DataStream) cacheData(data *JSONData) {
+	dataKey, ok := GetDeep(stream.dataCacheKey, *data)
+	if !ok {
+		log.Printf("Failed to find key %s", stream.dataCacheKey)
+		return
+	}
+	
+	dataKeyStr, ok := dataKey.(string)
+	if !ok {
+		// No key for us
+		return
+	}
+	stream.dataCache[dataKeyStr] = data
+	stream.dataCacheIndexes.PushBack(data)
+
+	if stream.dataCacheIndexes.Len() >= 64 {
+		stream.dataCacheIndexes.Remove(stream.dataCacheIndexes.Front())
+	}
+
+	log.Printf("Data cache now contains %d elements", stream.dataCacheIndexes.Len())
+}
+
+func (stream *DataStream) LookupData(key string) *JSONData {
+	data, ok := stream.dataCache[key]; 
+	if !ok {
+		return nil
+	}
+
+	return data
+}
+
 func (stream *DataStream) streamData() {
 	for {
 		line, isPrefix, err := stream.ioStream.ReadLine()
@@ -102,6 +145,9 @@ func (stream *DataStream) streamData() {
 			log.Println()
 			continue
 		}
+
+		// Add to our cache
+		stream.cacheData(&data)
 
 		// Now deliver this fine chunk of ranger data to each of our listeners
 		sent := false
