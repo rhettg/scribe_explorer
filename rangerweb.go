@@ -162,11 +162,15 @@ func ServePage(writer http.ResponseWriter, request *http.Request) {
 }
 
 func ServeDataItemPage(writer http.ResponseWriter, request *http.Request) {
-	log.Println("Starting /ranger")
-
+	if strings.Contains(request.Header.Get("Accept"), "application/json") {
+		writer.Header().Set("Content-Type", "applicaton/json")
+	} else {
+		writer.Header().Set("Content-Type", "text/plain")	
+	}
+	
 	stream := StreamByName("ranger")
 
-	log.Printf("received %s", request.FormValue("q"))
+	log.Printf("Serving full data for '%s'", request.FormValue("q"))
 	data := stream.LookupData(request.FormValue("q"))
 	if data == nil {
 		log.Printf("Failed to find %s", request.FormValue("q"))
@@ -174,19 +178,14 @@ func ServeDataItemPage(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 	
-	outputBytes, err := json.Marshal(data)
+	outputBytes, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
 		log.Printf("Failed to format data")
+		writer.WriteHeader(http.StatusInternalServerError)
+		return
 	}
-	if strings.Contains(request.Header.Get("Accept"), "application/json") {
-		writer.Header().Set("Content-Type", "applicaton/json")
-		writer.Write(outputBytes)
-	} else {
-
-		writer.Header().Set("Content-Type", "text/plain")	
-		// TODO: Prettyprint
-		writer.Write(outputBytes)
-	}
+	
+	writer.Write(outputBytes)
 }
 
 func listenTCPClients() {
