@@ -57,6 +57,7 @@ func (stream *DataStream) subscribe(request *SubscribeRequest) {
 		if value == nil {
 			stream.allChannels[ndx] = request.dataChan
 			request.id = ndx
+			break
 		}
 	}
 	if request.id < 0 {
