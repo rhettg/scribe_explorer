@@ -122,7 +122,9 @@ func ServeStream(stream *JSONConn) {
 			if err != nil {
 				log.Printf("Got error evaluating predicates: %v", err)
 			}
-			continue
+			// We have to quit here because if we have an error where our filters always fail like this
+			// we would be stuck in a endless loop and never close the connection out.
+			break
 		}
 		outputPairs := make([]interface{}, 0)
 
@@ -138,7 +140,7 @@ func ServeStream(stream *JSONConn) {
 		err := stream.WriteJSON(outputPairs)
 		if err != nil {
 			log.Printf("Failed to write", err)
-			return
+			break
 		}
 	}
 }
