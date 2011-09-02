@@ -104,10 +104,12 @@ func (stream *DataStream) cacheData(data *JSONData) {
 		return
 	}
 	stream.dataCache[dataKeyStr] = data
-	stream.dataCacheIndexes.PushBack(data)
+	stream.dataCacheIndexes.PushBack(dataKeyStr)
 
 	if stream.dataCacheIndexes.Len() >= 64 {
-		stream.dataCacheIndexes.Remove(stream.dataCacheIndexes.Front())
+		front := stream.dataCacheIndexes.Front()
+		stream.dataCache[front.Value.(string)] = nil
+		stream.dataCacheIndexes.Remove(front)
 	}
 }
 
