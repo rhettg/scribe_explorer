@@ -19,13 +19,12 @@ type LineReader interface {
 }
 
 var (
-	streamHost string
-	scribeStreams map[string] *DataStream
-
+	streamHost    string
+	scribeStreams map[string]*DataStream
 )
 
 func init() {
-	scribeStreams = make(map[string] *DataStream)
+	scribeStreams = make(map[string]*DataStream)
 }
 
 func CreateTestDataStream(fileName string) io.Reader {
@@ -41,12 +40,12 @@ func CreateTestDataStream(fileName string) io.Reader {
 func ServeWS(socket *websocket.Conn) {
 	jsonStream := NewJSONConn(socket)
 
-/*
-	defer func() {
-        if err := recover(); err != nil {
-            log.Println("ServeWS failed:", err)
-        }
-    }()
+	/*
+		defer func() {
+	        if err := recover(); err != nil {
+	            log.Println("ServeWS failed:", err)
+	        }
+	    }()
 	*/
 
 	ServeStream(jsonStream)
@@ -54,12 +53,12 @@ func ServeWS(socket *websocket.Conn) {
 
 func serveTCP(conn net.Conn) {
 	defer conn.Close()
-	
+
 	defer func() {
-        if err := recover(); err != nil {
-            log.Println("serveTCP failed:", err)
-        }
-    }()
+		if err := recover(); err != nil {
+			log.Println("serveTCP failed:", err)
+		}
+	}()
 
 	jsonStream := NewJSONConn(conn)
 
@@ -81,54 +80,52 @@ func ServeStream(stream *JSONConn) {
 	}
 
 	// Find the stream
-	logName := query.(map[string] interface{})["logName"].(string)
+	logName := query.(map[string]interface{})["logName"].(string)
 	log.Printf("Subscribing to log", logName)
-	
+
 	scribeStream := StreamByName(logName)
-	
+
 	// Create a new channel to receive data on
 	dataChan := make(chan JSONData, 16)
 	request := new(SubscribeRequest)
 	request.dataChan = dataChan
 	scribeStream.subscribeChan <- request
-	
-	defer func() {scribeStream.unsubscribeChan <- request}()
 
+	defer func() { scribeStream.unsubscribeChan <- request }()
 
 	displayFields := []Expression{}
-	for _, fieldValue := range query.(map[string] interface{})["fields"].([]interface{}) {
+	for _, fieldValue := range query.(map[string]interface{})["fields"].([]interface{}) {
 		aggregator, err := Parse(fieldValue.(string))
 		if err != nil {
 			log.Printf("Couldn't parse expression %v: %v", fieldValue, err)
-		}else {
+		} else {
 			displayFields = append(displayFields, aggregator)
 			log.Printf("Parsed to aggregator: %v", aggregator.String())
 		}
 	}
 
 	filterPredicates := []Expression{}
-	for _, statement := range query.(map[string] interface{})["filters"].([]interface{}) {
+	for _, statement := range query.(map[string]interface{})["filters"].([]interface{}) {
 		log.Printf("Statement: ", statement)
 		expr, err := Parse(statement.(string))
 		if err != nil {
-			log.Printf("Couldn't parse statement \"%s\": %v", statement, err)	
-		}else {
+			log.Printf("Couldn't parse statement \"%s\": %v", statement, err)
+		} else {
 			filterPredicates = append(filterPredicates, expr)
 		}
 	}
 
-
 	for {
 		data := <-dataChan
-		
+
 		if passes, err := PassesAllFilters(data, filterPredicates); !passes {
 			if err != nil {
 				log.Printf("Got error evaluating predicates: %v", err)
 			}
 			continue
 		}
-		outputPairs :=  make([]interface{}, 0)
-		
+		outputPairs := make([]interface{}, 0)
+
 		for _, fieldValue := range displayFields {
 			result, err := fieldValue.Evaluate(data)
 			if err != nil {
@@ -165,9 +162,9 @@ func ServeDataItemPage(writer http.ResponseWriter, request *http.Request) {
 	if strings.Contains(request.Header.Get("Accept"), "application/json") {
 		writer.Header().Set("Content-Type", "applicaton/json")
 	} else {
-		writer.Header().Set("Content-Type", "text/plain")	
+		writer.Header().Set("Content-Type", "text/plain")
 	}
-	
+
 	stream := StreamByName("ranger")
 
 	log.Printf("Serving full data for '%s'", request.FormValue("q"))
@@ -177,19 +174,19 @@ func ServeDataItemPage(writer http.ResponseWriter, request *http.Request) {
 		writer.WriteHeader(http.StatusNotFound)
 		return
 	}
-	
+
 	outputBytes, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
 		log.Printf("Failed to format data")
 		writer.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	
+
 	writer.Write(outputBytes)
 }
 
 func listenTCPClients() {
-	
+
 	ipAddr, err := net.ResolveIPAddr("tcp4", "127.0.0.1")
 	if err != nil {
 		log.Fatal("Failed to resolve", err)
@@ -217,7 +214,7 @@ func StreamByName(name string) (stream *DataStream) {
 	if stream, ok := scribeStreams[name]; ok {
 		return stream
 	}
-	
+
 	scribeStreams[name] = NewDataStream(name, streamHost)
 	return scribeStreams[name]
 }

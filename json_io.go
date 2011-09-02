@@ -13,12 +13,12 @@ type JSONConn struct {
 }
 
 func NewJSONConn(conn io.ReadWriter) *JSONConn {
-	reader, err := bufio.NewReaderSize(conn, 1024 * 8)
+	reader, err := bufio.NewReaderSize(conn, 1024*8)
 	if err != nil {
 		log.Fatal("Failed building reader", err)
 	}
 	writer := bufio.NewWriter(conn)
-	
+
 	bufConn := bufio.NewReadWriter(reader, writer)
 
 	return &JSONConn{bufConn}
@@ -51,12 +51,12 @@ func (jsonConn *JSONConn) WriteJSON(data JSONData) (err os.Error) {
 		log.Println("Failed to marshall", err)
 		return err
 	}
-	
-	_, err = jsonConn.bufConn.WriteString(string(outputBytes) + "\n");
+
+	_, err = jsonConn.bufConn.WriteString(string(outputBytes) + "\n")
 	if err != nil {
 		return
 	}
-	
+
 	// _, err := jsonConn.bufConn.WriteString("\n");
 	// if err != nil {
 	// 	return

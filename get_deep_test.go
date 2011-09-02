@@ -22,7 +22,7 @@ var getDeepTests = []getDeepTest{
 	getDeepTest{"c.d", 2., true},
 	getDeepTest{"array.2", nil, false},
 	getDeepTest{"c.d.not_there", nil, false},
-//	getDeepTest{"array", [2]float64{2., 3.}, true},
+	//	getDeepTest{"array", [2]float64{2., 3.}, true},
 	getDeepTest{"array.1", 3., true},
 	getDeepTest{"array.foo", nil, false},
 }
