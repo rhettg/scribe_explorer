@@ -102,7 +102,10 @@ func (stream *DataStream) cacheData(data *JSONData) {
 	if !ok {
 		// No key for us
 		return
+	
 	}
+
+
 	stream.dataCache[dataKeyStr] = data
 	stream.dataCacheIndexes.PushBack(dataKeyStr)
 
@@ -148,7 +151,8 @@ func (stream *DataStream) streamData() {
 		}
 
 		// Add to our cache
-		stream.cacheData(&data)
+		// Currently disabled due to memory leaks
+		//stream.cacheData(&data)
 
 		// Now deliver this fine chunk of ranger data to each of our listeners
 		sent := false
