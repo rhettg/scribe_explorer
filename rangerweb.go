@@ -14,6 +14,9 @@ import (
 	"strings"
 )
 
+// To enable profiling:
+// import _ "http/pprof"
+
 type LineReader interface {
 	ReadLine() (line []byte, isPrefix bool, err os.Error)
 }
@@ -121,10 +124,10 @@ func ServeStream(stream *JSONConn) {
 		if passes, err := PassesAllFilters(data, filterPredicates); !passes {
 			if err != nil {
 				log.Printf("Got error evaluating predicates: %v", err)
+				// We have to quit here because if we have an error where our filters always fail like this
+				// we would be stuck in a endless loop and never close the connection out.
+				break
 			}
-			// We have to quit here because if we have an error where our filters always fail like this
-			// we would be stuck in a endless loop and never close the connection out.
-			break
 		}
 		outputPairs := make([]interface{}, 0)
 
